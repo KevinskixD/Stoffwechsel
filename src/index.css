@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #b70e0c;
+  --color-brand-dark: #8a0a0a;
+  --color-brand-tint: #fbedec;
+
+  --color-badge-red-bg: #f4dcdb;
+  --color-badge-red-fg: #b70e0c;
+  --color-badge-amber-bg: #fdf3d9;
+  --color-badge-amber-fg: #946200;
+  --color-badge-green-bg: #e7f5ec;
+  --color-badge-green-fg: #1f7a3d;
+
+  --color-page: #fafafa;
+}
+
+body {
+  background: var(--color-page);
+}

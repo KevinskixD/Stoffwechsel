@@ -1,0 +1,73 @@
+export function DashboardIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="currentColor" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" fill="currentColor" opacity="0.4" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" fill="currentColor" opacity="0.4" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.4" />
+    </svg>
+  )
+}
+
+export function OrdersIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="5" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+export function ArticleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M20.5 7.3L12 3 3.5 7.3 12 11.6l8.5-4.3z" stroke="currentColor" strokeWidth="2" />
+      <path d="M3.5 7.3v9.4L12 21l8.5-4.3V7.3M12 11.6V21" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+export function PersonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+export function ReportsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M4 20V10M12 20V4M20 20v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M2.5 20h19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function GearIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M19.4 13a7.6 7.6 0 000-2l2-1.5-2-3.5-2.3.9a7.6 7.6 0 00-1.7-1l-.3-2.4h-4l-.3 2.4a7.6 7.6 0 00-1.7 1l-2.3-.9-2 3.5L6.6 11a7.6 7.6 0 000 2l-2 1.5 2 3.5 2.3-.9c.5.4 1.1.7 1.7 1l.3 2.4h4l.3-2.4c.6-.3 1.2-.6 1.7-1l2.3.9 2-3.5-2-1.5z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  )
+}
+
+export function HelpIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M9.5 9a2.5 2.5 0 115 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
