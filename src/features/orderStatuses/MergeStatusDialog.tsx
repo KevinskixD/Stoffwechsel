@@ -1,7 +1,6 @@
 interface MergeStatusDialogProps {
   open: boolean
-  nameA: string | null
-  nameB: string | null
+  names: string[]
   name: string
   onNameChange: (name: string) => void
   error: string | null
@@ -9,17 +8,9 @@ interface MergeStatusDialogProps {
   onCancel: () => void
 }
 
-export function MergeStatusDialog({
-  open,
-  nameA,
-  nameB,
-  name,
-  onNameChange,
-  error,
-  onConfirm,
-  onCancel,
-}: MergeStatusDialogProps) {
-  if (!open || !nameA || !nameB) return null
+export function MergeStatusDialog({ open, names, name, onNameChange, error, onConfirm, onCancel }: MergeStatusDialogProps) {
+  if (!open || names.length < 2) return null
+  const namesList = names.map((n) => `"${n}"`).join(', ')
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45" onClick={onCancel}>
       <div
@@ -28,7 +19,7 @@ export function MergeStatusDialog({
       >
         <h2 className="text-[17px] font-extrabold text-gray-900">Status zusammenführen</h2>
         <p className="mt-1 text-[13px] text-black/55">
-          {`"${nameA}" und "${nameB}" werden zu einem Status zusammengeführt. Bestellungen mit einem dieser Status werden auf den neuen Namen aktualisiert.`}
+          {`${namesList} werden zu einem Status zusammengeführt. Bestellungen mit einem dieser Status werden auf den neuen Namen aktualisiert.`}
         </p>
         <input
           autoFocus

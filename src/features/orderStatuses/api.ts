@@ -39,6 +39,7 @@ export async function createOrderStatus(name: string): Promise<void> {
     name,
     sortOrder: maxSortOrder + 10,
     active: true,
+    color: '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -46,6 +47,10 @@ export async function createOrderStatus(name: string): Promise<void> {
 
 export async function renameOrderStatus(id: string, name: string): Promise<void> {
   await updateDoc(doc(db, 'orderStatuses', id), { name, updatedAt: serverTimestamp() })
+}
+
+export async function updateOrderStatusColor(id: string, color: string): Promise<void> {
+  await updateDoc(doc(db, 'orderStatuses', id), { color, updatedAt: serverTimestamp() })
 }
 
 export async function setOrderStatusActive(id: string, active: boolean): Promise<void> {
@@ -57,13 +62,16 @@ export async function deleteOrderStatus(id: string): Promise<void> {
 }
 
 /**
- * Merges `mergeId` into `keepId` under `newName`: repoints every order referencing either
- * status to `keepId`/`newName`, renames the surviving status doc, and deletes the other one.
+ * Merges every status in `mergeIds` into `keepId` under `newName`: repoints every order
+ * referencing any of them to `keepId`/`newName`, renames the surviving status doc, and deletes
+ * the others.
  */
-export async function mergeOrderStatuses(keepId: string, mergeId: string, newName: string): Promise<void> {
-  await reassignOrdersStatus([keepId, mergeId], keepId, newName)
+export async function mergeOrderStatuses(keepId: string, mergeIds: string[], newName: string): Promise<void> {
+  await reassignOrdersStatus([keepId, ...mergeIds], keepId, newName)
   await updateDoc(doc(db, 'orderStatuses', keepId), { name: newName, updatedAt: serverTimestamp() })
-  await deleteOrderStatus(mergeId)
+  const batch = writeBatch(db)
+  mergeIds.forEach((id) => batch.delete(doc(db, 'orderStatuses', id)))
+  await batch.commit()
 }
 
 /** Full renumber: rewrites sortOrder 10,20,30… for all statuses in the given order. */

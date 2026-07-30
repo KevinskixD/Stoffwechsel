@@ -103,6 +103,7 @@ export function OrderForm() {
       name: `${form.status} (inaktiv)`,
       sortOrder: -1,
       active: false,
+      color: '',
       createdAt: new Date(),
       updatedAt: new Date(),
     })

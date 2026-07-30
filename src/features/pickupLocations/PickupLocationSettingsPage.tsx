@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useSelection } from '../../shared/hooks/useRowSelection'
+import { isInteractiveClickTarget } from '../../shared/utils/rowClick'
 import type { PickupLocation } from '../../types/pickupLocation'
+import { MergePickupLocationDialog } from './MergePickupLocationDialog'
 import {
   createPickupLocation,
   deletePickupLocation,
   isPickupLocationNameTaken,
+  mergePickupLocations,
   renamePickupLocation,
   reorderPickupLocations,
   setPickupLocationActive,
@@ -35,6 +39,11 @@ export function PickupLocationSettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const selection = useSelection(locations)
+  const shiftPressed = useRef(false)
+  const [pendingMerge, setPendingMerge] = useState<PickupLocation[] | null>(null)
+  const [mergeName, setMergeName] = useState('')
+  const [mergeError, setMergeError] = useState<string | null>(null)
 
   async function handleAdd() {
     const trimmed = newName.trim()
@@ -65,6 +74,36 @@ export function PickupLocationSettingsPage() {
     await renamePickupLocation(location.id, trimmed)
   }
 
+  function openMerge() {
+    const selected = locations.filter((l) => selection.selectedIds.has(l.id))
+    if (selected.length < 2) return
+    setMergeName(selected[0].name)
+    setMergeError(null)
+    setPendingMerge(selected)
+  }
+
+  async function confirmMerge() {
+    if (!pendingMerge || pendingMerge.length < 2) return
+    const trimmed = mergeName.trim()
+    if (!trimmed) {
+      setMergeError('Bitte einen Namen angeben.')
+      return
+    }
+    const [keep, ...rest] = pendingMerge
+    setMergeError(null)
+    if (await isPickupLocationNameTaken(trimmed, pendingMerge.map((l) => l.id))) {
+      setMergeError('Dieser Abholort existiert bereits.')
+      return
+    }
+    await mergePickupLocations(
+      keep.id,
+      rest.map((l) => l.id),
+      trimmed,
+    )
+    setPendingMerge(null)
+    selection.clear()
+  }
+
   function handleDrop(targetId: string) {
     const sourceId = dragId
     setDragId(null)
@@ -85,6 +124,28 @@ export function PickupLocationSettingsPage() {
         title="Einstellungen"
         subtitle="Abholorte verwalten — bestimmt Auswahl und Reihenfolge im Artikelformular"
       />
+
+      {selection.selectedCount > 0 && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-brand/25 bg-brand/5 px-4 py-2.5">
+          <span className="text-[13px] font-semibold text-gray-900">{selection.selectedCount} ausgewählt</span>
+          <div className="flex items-center gap-4">
+            {selection.selectedCount >= 2 ? (
+              <button type="button" onClick={openMerge} className="text-[13px] font-bold text-brand hover:underline">
+                Zusammenführen
+              </button>
+            ) : (
+              <span className="text-[13px] text-black/45">Mind. 2 auswählen zum Zusammenführen</span>
+            )}
+            <button
+              type="button"
+              onClick={() => selection.clear()}
+              className="text-[13px] font-semibold text-black/45 hover:underline"
+            >
+              Auswahl aufheben
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
@@ -107,16 +168,33 @@ export function PickupLocationSettingsPage() {
                 e.preventDefault()
                 handleDrop(location.id)
               }}
-              className={`flex items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
+              onClick={(e) => {
+                if (isInteractiveClickTarget(e.target)) return
+                selection.toggleRowClick(location.id, e.shiftKey)
+              }}
+              className={`flex cursor-pointer items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
                 dragId === location.id ? 'opacity-40' : ''
-              } ${dragOverId === location.id && dragId !== location.id ? 'border-brand bg-brand/5' : 'border-transparent'}`}
+              } ${dragOverId === location.id && dragId !== location.id ? 'border-brand bg-brand/5' : 'border-transparent'} ${
+                selection.selectedIds.has(location.id) ? 'bg-brand/5' : ''
+              }`}
             >
               <span
+                data-no-row-select
                 className="cursor-grab text-black/25 hover:text-black/45 active:cursor-grabbing"
                 title="Ziehen zum Verschieben"
               >
                 <GripIcon />
               </span>
+
+              <input
+                type="checkbox"
+                checked={selection.selectedIds.has(location.id)}
+                onClick={(e) => {
+                  shiftPressed.current = e.shiftKey
+                }}
+                onChange={(e) => selection.toggleOne(location.id, e.target.checked, shiftPressed.current)}
+                className="size-4 rounded border-black/20 accent-brand"
+              />
 
               <div className="flex-1">
                 {editingId === location.id ? (
@@ -186,6 +264,16 @@ export function PickupLocationSettingsPage() {
           setPendingDelete(null)
           setDeleteError(null)
         }}
+      />
+
+      <MergePickupLocationDialog
+        open={pendingMerge !== null}
+        names={pendingMerge?.map((l) => l.name) ?? []}
+        name={mergeName}
+        onNameChange={setMergeName}
+        error={mergeError}
+        onConfirm={confirmMerge}
+        onCancel={() => setPendingMerge(null)}
       />
 
       <div className="mt-4 flex gap-2.5">

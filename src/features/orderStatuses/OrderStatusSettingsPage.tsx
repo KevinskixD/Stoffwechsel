@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useSelection } from '../../shared/hooks/useRowSelection'
+import { isInteractiveClickTarget } from '../../shared/utils/rowClick'
+import { legacyHexBg } from '../../shared/utils/statusColors'
 import type { OrderStatus } from '../../types/orderStatus'
 import { MergeStatusDialog } from './MergeStatusDialog'
 import {
@@ -11,6 +14,7 @@ import {
   renameOrderStatus,
   reorderOrderStatuses,
   setOrderStatusActive,
+  updateOrderStatusColor,
 } from './api'
 import { useOrderStatuses } from './hooks'
 
@@ -34,10 +38,9 @@ export function OrderStatusSettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [pendingDelete, setPendingDelete] = useState<OrderStatus | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const lastClickedId = useRef<string | null>(null)
+  const selection = useSelection(statuses)
   const shiftPressed = useRef(false)
-  const [pendingMerge, setPendingMerge] = useState<[OrderStatus, OrderStatus] | null>(null)
+  const [pendingMerge, setPendingMerge] = useState<OrderStatus[] | null>(null)
   const [mergeName, setMergeName] = useState('')
   const [mergeError, setMergeError] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -72,56 +75,34 @@ export function OrderStatusSettingsPage() {
     await renameOrderStatus(status.id, trimmed)
   }
 
-  /** Shift+click selects the range between the last clicked status and this one. */
-  function toggleSelected(id: string, shiftKey: boolean) {
-    // Captured before setSelectedIds — its updater may run after this function returns, by which
-    // point `lastClickedId.current = id` below would already have overwritten the previous value.
-    const previousId = lastClickedId.current
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      const fromIndex = shiftKey && previousId ? statuses.findIndex((s) => s.id === previousId) : -1
-      const toIndex = shiftKey ? statuses.findIndex((s) => s.id === id) : -1
-      if (fromIndex !== -1 && toIndex !== -1) {
-        const [start, end] = fromIndex < toIndex ? [fromIndex, toIndex] : [toIndex, fromIndex]
-        const checked = !prev.has(id)
-        for (let i = start; i <= end; i++) {
-          if (checked) next.add(statuses[i].id)
-          else next.delete(statuses[i].id)
-        }
-      } else if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-    lastClickedId.current = id
-  }
-
   function openMerge() {
-    const [a, b] = statuses.filter((s) => selectedIds.has(s.id))
-    if (!a || !b) return
-    setMergeName(a.name)
+    const selected = statuses.filter((s) => selection.selectedIds.has(s.id))
+    if (selected.length < 2) return
+    setMergeName(selected[0].name)
     setMergeError(null)
-    setPendingMerge([a, b])
+    setPendingMerge(selected)
   }
 
   async function confirmMerge() {
-    if (!pendingMerge) return
+    if (!pendingMerge || pendingMerge.length < 2) return
     const trimmed = mergeName.trim()
     if (!trimmed) {
       setMergeError('Bitte einen Namen angeben.')
       return
     }
-    const [a, b] = pendingMerge
+    const [keep, ...rest] = pendingMerge
     setMergeError(null)
-    if (await isStatusNameTaken(trimmed, [a.id, b.id])) {
+    if (await isStatusNameTaken(trimmed, pendingMerge.map((s) => s.id))) {
       setMergeError('Dieser Status existiert bereits.')
       return
     }
-    await mergeOrderStatuses(a.id, b.id, trimmed)
+    await mergeOrderStatuses(
+      keep.id,
+      rest.map((s) => s.id),
+      trimmed,
+    )
     setPendingMerge(null)
-    setSelectedIds(new Set())
+    selection.clear()
   }
 
   function handleDrop(targetId: string) {
@@ -145,20 +126,20 @@ export function OrderStatusSettingsPage() {
         subtitle="Bestellstatus verwalten — bestimmt Auswahl und Reihenfolge im Bestellformular"
       />
 
-      {selectedIds.size > 0 && (
+      {selection.selectedCount > 0 && (
         <div className="mb-3 flex items-center justify-between rounded-lg border border-brand/25 bg-brand/5 px-4 py-2.5">
-          <span className="text-[13px] font-semibold text-gray-900">{selectedIds.size} ausgewählt</span>
+          <span className="text-[13px] font-semibold text-gray-900">{selection.selectedCount} ausgewählt</span>
           <div className="flex items-center gap-4">
-            {selectedIds.size === 2 ? (
+            {selection.selectedCount >= 2 ? (
               <button type="button" onClick={openMerge} className="text-[13px] font-bold text-brand hover:underline">
                 Zusammenführen
               </button>
             ) : (
-              <span className="text-[13px] text-black/45">Genau 2 auswählen zum Zusammenführen</span>
+              <span className="text-[13px] text-black/45">Mind. 2 auswählen zum Zusammenführen</span>
             )}
             <button
               type="button"
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => selection.clear()}
               className="text-[13px] font-semibold text-black/45 hover:underline"
             >
               Auswahl aufheben
@@ -188,11 +169,18 @@ export function OrderStatusSettingsPage() {
                 e.preventDefault()
                 handleDrop(status.id)
               }}
-              className={`flex items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
+              onClick={(e) => {
+                if (isInteractiveClickTarget(e.target)) return
+                selection.toggleRowClick(status.id, e.shiftKey)
+              }}
+              className={`flex cursor-pointer items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
                 dragId === status.id ? 'opacity-40' : ''
-              } ${dragOverId === status.id && dragId !== status.id ? 'border-brand bg-brand/5' : 'border-transparent'}`}
+              } ${dragOverId === status.id && dragId !== status.id ? 'border-brand bg-brand/5' : 'border-transparent'} ${
+                selection.selectedIds.has(status.id) ? 'bg-brand/5' : ''
+              }`}
             >
               <span
+                data-no-row-select
                 className="cursor-grab text-black/25 hover:text-black/45 active:cursor-grabbing"
                 title="Ziehen zum Verschieben"
               >
@@ -201,11 +189,11 @@ export function OrderStatusSettingsPage() {
 
               <input
                 type="checkbox"
-                checked={selectedIds.has(status.id)}
+                checked={selection.selectedIds.has(status.id)}
                 onClick={(e) => {
                   shiftPressed.current = e.shiftKey
                 }}
-                onChange={() => toggleSelected(status.id, shiftPressed.current)}
+                onChange={(e) => selection.toggleOne(status.id, e.target.checked, shiftPressed.current)}
                 className="size-4 rounded border-black/20 accent-brand"
               />
 
@@ -230,6 +218,14 @@ export function OrderStatusSettingsPage() {
                   </button>
                 )}
               </div>
+
+              <input
+                type="color"
+                value={status.color || legacyHexBg(status.name)}
+                onChange={(e) => void updateOrderStatusColor(status.id, e.target.value)}
+                title="Hintergrundfarbe"
+                className="h-7 w-7 cursor-pointer rounded border border-black/[0.12] p-0.5"
+              />
 
               <button
                 type="button"
@@ -269,8 +265,7 @@ export function OrderStatusSettingsPage() {
 
       <MergeStatusDialog
         open={pendingMerge !== null}
-        nameA={pendingMerge?.[0].name ?? null}
-        nameB={pendingMerge?.[1].name ?? null}
+        names={pendingMerge?.map((s) => s.name) ?? []}
         name={mergeName}
         onNameChange={setMergeName}
         error={mergeError}

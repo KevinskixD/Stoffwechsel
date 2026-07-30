@@ -14,7 +14,7 @@ export function FilterSelect({ label, value, onChange, children }: FilterSelectP
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full truncate rounded-lg border border-black/[0.12] px-3 py-2 text-[13.5px] font-medium text-gray-900"
+        className="h-10 w-full truncate rounded-lg border border-black/[0.12] px-3 text-[13.5px] font-medium text-gray-900"
       >
         {children}
       </select>

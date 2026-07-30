@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 interface ConfirmDialogProps {
   open: boolean
   title: string
@@ -6,6 +8,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  children?: ReactNode
 }
 
 export function ConfirmDialog({
@@ -16,6 +19,7 @@ export function ConfirmDialog({
   cancelLabel = 'Abbrechen',
   onConfirm,
   onCancel,
+  children,
 }: ConfirmDialogProps) {
   if (!open) return null
   return (
@@ -26,6 +30,7 @@ export function ConfirmDialog({
       >
         <h2 className="text-[17px] font-extrabold text-gray-900">{title}</h2>
         <p className="mt-1 text-[13px] text-black/55">{message}</p>
+        {children}
         <div className="mt-6 flex justify-end gap-2.5">
           <button
             type="button"

@@ -2,12 +2,17 @@ import { Route, Routes } from 'react-router-dom'
 import { articleImportConfig } from '../features/articles/articleImportConfig'
 import { ArticleForm } from '../features/articles/ArticleForm'
 import { ArticleListPage } from '../features/articles/ArticleListPage'
+import { BackupSettingsPage } from '../features/backup/BackupSettingsPage'
+import { BestellFormularSettingsPage } from '../features/bestellFormular/BestellFormularSettingsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { employeeImportConfig } from '../features/employees/employeeImportConfig'
 import { EmployeeForm } from '../features/employees/EmployeeForm'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage'
 import { HelpPage } from '../features/help/HelpPage'
+import { LieferscheinCheckPage } from '../features/lieferscheinCheck/LieferscheinCheckPage'
 import { NotificationSettingsPage } from '../features/notificationSettings/NotificationSettingsPage'
+import { OrderHistoryPage } from '../features/orderHistory/OrderHistoryPage'
+import { OrderListSettingsPage } from '../features/orderListSettings/OrderListSettingsPage'
 import { OrderStatusSettingsPage } from '../features/orderStatuses/OrderStatusSettingsPage'
 import { orderImportConfig } from '../features/orders/orderImportConfig'
 import { OrderForm } from '../features/orders/OrderForm'
@@ -31,6 +36,8 @@ export function AppRoutes() {
 
       <Route path="/orders" element={<OrderListPage />} />
       <Route path="/orders/pickup-ready" element={<PickupReadyPage />} />
+      <Route path="/orders/lieferschein-check" element={<LieferscheinCheckPage />} />
+      <Route path="/orders/history" element={<OrderHistoryPage />} />
       <Route path="/orders/new" element={<OrderForm />} />
       <Route path="/orders/:id/edit" element={<OrderForm />} />
       <Route path="/orders/import" element={<ImportWizard config={orderImportConfig} />} />
@@ -52,6 +59,9 @@ export function AppRoutes() {
       <Route path="/settings/order-statuses" element={<OrderStatusSettingsPage />} />
       <Route path="/settings/pickup-locations" element={<PickupLocationSettingsPage />} />
       <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+      <Route path="/settings/bestellformular" element={<BestellFormularSettingsPage />} />
+      <Route path="/settings/order-list-buttons" element={<OrderListSettingsPage />} />
+      <Route path="/settings/backup" element={<BackupSettingsPage />} />
 
       <Route path="*" element={<Placeholder label="Seite nicht gefunden" />} />
     </Routes>

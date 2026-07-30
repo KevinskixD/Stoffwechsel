@@ -10,7 +10,14 @@ import { SearchInput } from '../../shared/components/SearchInput'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
 import { matchesAllTokens } from '../../shared/utils/search'
 import type { Employee } from '../../types/employee'
-import { deleteAllEmployees, deleteEmployee, deleteEmployees, setEmployeeActive, updateEmployeeField } from './api'
+import {
+  deleteAllEmployees,
+  deleteEmployee,
+  deleteEmployees,
+  setEmployeeActive,
+  swapEmployeeNames,
+  updateEmployeeField,
+} from './api'
 import { useEmployees } from './hooks'
 
 type PendingDelete = { kind: 'single'; employee: Employee } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
@@ -20,6 +27,7 @@ export function EmployeeListPage() {
   const [search, setSearch] = useState('')
   const [pendingDeactivate, setPendingDeactivate] = useState<Employee | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [pendingSwap, setPendingSwap] = useState<Employee[] | null>(null)
   const { data: employees, loading } = useEmployees(showInactive)
 
   const filtered = employees.filter((e) => matchesAllTokens(search, e.firstName, e.lastName, e.personnelNumber))
@@ -118,13 +126,22 @@ export function EmployeeListPage() {
         <SearchInput value={search} onChange={setSearch} placeholder="Name oder Personalnummer…" />
         <ActiveToggleFilter showInactive={showInactive} onChange={setShowInactive} />
         {selection.selectedCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setPendingDelete({ kind: 'bulk', ids: Array.from(selection.selectedIds) })}
-            className="rounded-lg border border-red-300 px-3.5 py-1.5 text-[13px] font-bold text-red-600"
-          >
-            {selection.selectedCount} ausgewählt löschen
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setPendingSwap(filtered.filter((e) => selection.selectedIds.has(e.id)))}
+              className="rounded-lg border border-black/[0.12] px-3.5 py-1.5 text-[13px] font-bold text-gray-900"
+            >
+              Vor-/Nachname tauschen
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingDelete({ kind: 'bulk', ids: Array.from(selection.selectedIds) })}
+              className="rounded-lg border border-red-300 px-3.5 py-1.5 text-[13px] font-bold text-red-600"
+            >
+              {selection.selectedCount} ausgewählt löschen
+            </button>
+          </>
         )}
         <span className="ml-auto text-xs font-semibold text-black/45">{filtered.length} Einträge</span>
       </div>
@@ -132,7 +149,13 @@ export function EmployeeListPage() {
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : (
-        <DataTable columns={columns} rows={filtered} rowKey={(e) => e.id} />
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          rowKey={(e) => e.id}
+          onRowClick={(e, ev) => selection.toggleRowClick(e.id, ev.shiftKey)}
+          isRowSelected={(e) => selection.selectedIds.has(e.id)}
+        />
       )}
 
       <ConfirmDialog
@@ -183,6 +206,24 @@ export function EmployeeListPage() {
           setPendingDelete(null)
         }}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingSwap !== null}
+        title="Vor-/Nachname tauschen"
+        message={
+          pendingSwap
+            ? `Bei ${pendingSwap.length} ausgewählten Mitarbeiter(n) Vor- und Nachname vertauschen?`
+            : ''
+        }
+        confirmLabel="Tauschen"
+        onConfirm={async () => {
+          if (!pendingSwap) return
+          await swapEmployeeNames(pendingSwap)
+          selection.clear()
+          setPendingSwap(null)
+        }}
+        onCancel={() => setPendingSwap(null)}
       />
     </div>
   )

@@ -5,6 +5,8 @@ import { ActiveToggleFilter } from '../../shared/components/ActiveToggleFilter'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable'
 import { EditableCell } from '../../shared/components/EditableCell'
+import { FilterField } from '../../shared/components/FilterField'
+import { FilterSelect } from '../../shared/components/FilterSelect'
 import { PageHeader, PrimaryLinkButton } from '../../shared/components/PageHeader'
 import { SearchInput } from '../../shared/components/SearchInput'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
@@ -28,9 +30,14 @@ import { useArticles } from './hooks'
 
 type PendingDelete = { kind: 'single'; article: Article } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
 
+const NO_PICKUP_LOCATION = '__none__'
+
 export function ArticleListPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [search, setSearch] = useState('')
+  const [pickupLocationFilter, setPickupLocationFilter] = useState('')
+  const [deductibleFilter, setDeductibleFilter] = useState('')
+  const [sizeFilter, setSizeFilter] = useState('')
   const [pendingDeactivate, setPendingDeactivate] = useState<Article | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [assigningPickupLocation, setAssigningPickupLocation] = useState(false)
@@ -39,7 +46,19 @@ export function ArticleListPage() {
   const { data: articles, loading } = useArticles(showInactive)
   const { data: pickupLocations } = usePickupLocations(false)
 
-  const filtered = articles.filter((a) => matchesSearch(search, a.articleName, a.articleNumber))
+  const sizeOptions = Array.from(new Set(articles.map((a) => a.size).filter(Boolean))).sort()
+
+  const filtered = articles
+    .filter((a) => matchesSearch(search, a.articleName, a.articleNumber))
+    .filter((a) =>
+      pickupLocationFilter
+        ? pickupLocationFilter === NO_PICKUP_LOCATION
+          ? a.pickupLocationId === ''
+          : a.pickupLocationId === pickupLocationFilter
+        : true,
+    )
+    .filter((a) => (deductibleFilter === 'yes' ? a.hasDeductible : deductibleFilter === 'no' ? !a.hasDeductible : true))
+    .filter((a) => (sizeFilter ? a.size === sizeFilter : true))
   const selection = useRowSelection(filtered)
 
   const columns: DataTableColumn<Article>[] = [
@@ -184,8 +203,35 @@ export function ArticleListPage() {
         }
       />
 
+      <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <FilterSelect label="Abholort" value={pickupLocationFilter} onChange={setPickupLocationFilter}>
+          <option value="">Alle</option>
+          <option value={NO_PICKUP_LOCATION}>Kein Abholort</option>
+          {pickupLocations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect label="Selbstbehalt" value={deductibleFilter} onChange={setDeductibleFilter}>
+          <option value="">Alle</option>
+          <option value="yes">Mit Selbstbehalt</option>
+          <option value="no">Ohne Selbstbehalt</option>
+        </FilterSelect>
+        <FilterSelect label="Größe" value={sizeFilter} onChange={setSizeFilter}>
+          <option value="">Alle</option>
+          {sizeOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterField label="Suche">
+          <SearchInput value={search} onChange={setSearch} placeholder="Bezeichnung oder Nummer…" />
+        </FilterField>
+      </div>
+
       <div className="mb-4.5 flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="Bezeichnung oder Nummer…" />
         <ActiveToggleFilter showInactive={showInactive} onChange={setShowInactive} />
         {selection.selectedCount > 0 && (
           <>
@@ -219,7 +265,13 @@ export function ArticleListPage() {
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : (
-        <DataTable columns={columns} rows={filtered} rowKey={(a) => a.id} />
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          rowKey={(a) => a.id}
+          onRowClick={(a, ev) => selection.toggleRowClick(a.id, ev.shiftKey)}
+          isRowSelected={(a) => selection.selectedIds.has(a.id)}
+        />
       )}
 
       <ConfirmDialog

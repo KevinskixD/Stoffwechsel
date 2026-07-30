@@ -22,10 +22,25 @@ service cloud.firestore {
     match /orders/{id} {
       allow read, write: if true;
     }
+    match /orderHistory/{id} {
+      allow read, write: if true;
+    }
     match /pickupLocations/{id} {
       allow read, write: if true;
     }
     match /notificationSettings/{id} {
+      allow read, write: if true;
+    }
+    match /bestellFormularSettings/{id} {
+      allow read, write: if true;
+    }
+    match /orderListSettings/{id} {
+      allow read, write: if true;
+    }
+    match /lieferscheinChecks/{id} {
+      allow read, write: if true;
+    }
+    match /appMeta/{id} {
       allow read, write: if true;
     }
   }

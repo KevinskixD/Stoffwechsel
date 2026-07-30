@@ -3,6 +3,8 @@ export interface OrderStatus {
   name: string
   sortOrder: number
   active: boolean
+  /** Hex background color (e.g. "#FCA5A5"), freely configurable; '' falls back to a legacy default. */
+  color: string
   createdAt: Date
   updatedAt: Date
 }

@@ -1,7 +1,17 @@
 import type { ComponentType } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../assets/oerk-logo.png'
-import { ArticleIcon, DashboardIcon, GearIcon, HelpIcon, OrdersIcon, PersonIcon, ReportsIcon } from './icons'
+import {
+  ArticleIcon,
+  DashboardIcon,
+  DeliveryIcon,
+  GearIcon,
+  HelpIcon,
+  HistoryIcon,
+  OrdersIcon,
+  PersonIcon,
+  ReportsIcon,
+} from './icons'
 
 interface NavItemDef {
   to: string
@@ -16,13 +26,29 @@ const NAV_ITEMS: NavItemDef[] = [
     to: '/orders',
     label: 'Bestellungen',
     Icon: OrdersIcon,
-    match: (path) => path.startsWith('/orders') && !path.startsWith('/orders/pickup-ready'),
+    match: (path) =>
+      path.startsWith('/orders') &&
+      !path.startsWith('/orders/pickup-ready') &&
+      !path.startsWith('/orders/lieferschein-check') &&
+      !path.startsWith('/orders/history'),
+  },
+  {
+    to: '/orders/lieferschein-check',
+    label: 'Lieferschein prüfen',
+    Icon: DeliveryIcon,
+    match: (path) => path.startsWith('/orders/lieferschein-check'),
   },
   {
     to: '/orders/pickup-ready',
     label: 'Abholbereit',
     Icon: OrdersIcon,
     match: (path) => path.startsWith('/orders/pickup-ready'),
+  },
+  {
+    to: '/orders/history',
+    label: 'Verlauf',
+    Icon: HistoryIcon,
+    match: (path) => path.startsWith('/orders/history'),
   },
   { to: '/employees', label: 'Mitarbeiter', Icon: PersonIcon, match: (path) => path.startsWith('/employees') },
   { to: '/articles', label: 'Artikel', Icon: ArticleIcon, match: (path) => path.startsWith('/articles') },
@@ -52,6 +78,24 @@ const BOTTOM_ITEMS: NavItemDef[] = [
     label: 'Benachrichtigung',
     Icon: GearIcon,
     match: (path) => path === '/settings/notifications',
+  },
+  {
+    to: '/settings/bestellformular',
+    label: 'Bestellformular',
+    Icon: GearIcon,
+    match: (path) => path === '/settings/bestellformular',
+  },
+  {
+    to: '/settings/order-list-buttons',
+    label: 'Aktionsbuttons',
+    Icon: GearIcon,
+    match: (path) => path === '/settings/order-list-buttons',
+  },
+  {
+    to: '/settings/backup',
+    label: 'Datensicherung',
+    Icon: GearIcon,
+    match: (path) => path === '/settings/backup',
   },
   { to: '/help', label: 'Hilfe', Icon: HelpIcon, match: (path) => path.startsWith('/help') },
 ]

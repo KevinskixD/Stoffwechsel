@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable'
+import { FilterDateInput } from '../../shared/components/FilterDateInput'
+import { FilterField } from '../../shared/components/FilterField'
 import { SearchInput } from '../../shared/components/SearchInput'
 import { StatusBadge } from '../../shared/components/StatusBadge'
 import { formatDateDe } from '../../shared/utils/date'
 import { matchesAllTokens } from '../../shared/utils/search'
+import { useOrderStatuses } from '../orderStatuses/hooks'
 import { useOrders } from '../orders/hooks'
 import { flattenReportRows } from './flattenReportRows'
 import { computeByEmployeeReport, type EmployeeReportRow } from './reportQueries'
@@ -12,7 +15,10 @@ import { ReportTabs } from './ReportTabs'
 type SortKey = 'employeeName' | 'totalQuantity' | 'orderCount'
 
 export function ByEmployeeReportPage() {
-  const { data: orders, loading } = useOrders({})
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const { data: orders, loading } = useOrders({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
+  const { data: statuses } = useOrderStatuses(true)
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('employeeName')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -61,9 +67,19 @@ export function ByEmployeeReportPage() {
       <p className="mb-5 text-sm text-black/50">Summen und Verteilungen über alle Bestellungen</p>
       <ReportTabs />
 
-      <div className="mb-4.5 flex items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="Mitarbeiter suchen…" />
-        <span className="ml-auto text-xs font-semibold text-black/45">{sorted.length} Einträge</span>
+      <div className="mb-4.5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <FilterField label="Von">
+          <FilterDateInput value={dateFrom} onChange={setDateFrom} />
+        </FilterField>
+        <FilterField label="Bis">
+          <FilterDateInput value={dateTo} onChange={setDateTo} />
+        </FilterField>
+        <FilterField label="Suche">
+          <SearchInput value={search} onChange={setSearch} placeholder="Mitarbeiter suchen…" />
+        </FilterField>
+      </div>
+      <div className="mb-4.5 flex items-center justify-end">
+        <span className="text-xs font-semibold text-black/45">{sorted.length} Einträge</span>
       </div>
 
       {loading ? (
@@ -89,7 +105,7 @@ export function ByEmployeeReportPage() {
                       <span>
                         {formatDateDe(o.orderDate)} — {o.articleName} ({o.quantity}x)
                       </span>
-                      <StatusBadge status={o.status} />
+                      <StatusBadge status={o.status} color={statuses.find((s) => s.id === o.statusId)?.color} />
                     </li>
                   ))}
               </ul>

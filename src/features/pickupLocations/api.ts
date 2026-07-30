@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
+import { assignPickupLocationToArticles } from '../articles/api'
 import type { PickupLocation } from '../../types/pickupLocation'
 
 const pickupLocationConverter = createConverter<PickupLocation>()
@@ -25,9 +26,10 @@ export function pickupLocationsQuery(includeInactive: boolean) {
     : query(converted, where('active', '==', true), orderBy('sortOrder'))
 }
 
-export async function isPickupLocationNameTaken(name: string, excludeId?: string): Promise<boolean> {
+export async function isPickupLocationNameTaken(name: string, excludeId?: string | string[]): Promise<boolean> {
   const snapshot = await getDocs(query(pickupLocationsCollection, where('name', '==', name)))
-  return snapshot.docs.some((docSnap) => docSnap.id !== excludeId)
+  const excluded = new Set(Array.isArray(excludeId) ? excludeId : excludeId ? [excludeId] : [])
+  return snapshot.docs.some((docSnap) => !excluded.has(docSnap.id))
 }
 
 export async function createPickupLocation(name: string): Promise<void> {
@@ -57,6 +59,22 @@ export async function deletePickupLocation(id: string): Promise<void> {
     throw new Error(`Abholort wird noch von ${inUse.size} Artikel(n) verwendet und kann nicht gelöscht werden.`)
   }
   await deleteDoc(doc(db, 'pickupLocations', id))
+}
+
+/**
+ * Merges every location in `mergeIds` into `keepId` under `newName`: repoints every article
+ * referencing any of them to `keepId`/`newName`, renames the surviving location doc, and deletes
+ * the others.
+ */
+export async function mergePickupLocations(keepId: string, mergeIds: string[], newName: string): Promise<void> {
+  const snapshot = await getDocs(
+    query(collection(db, 'articles'), where('pickupLocationId', 'in', [keepId, ...mergeIds])),
+  )
+  await assignPickupLocationToArticles(snapshot.docs.map((docSnap) => docSnap.id), keepId, newName)
+  await updateDoc(doc(db, 'pickupLocations', keepId), { name: newName, updatedAt: serverTimestamp() })
+  const batch = writeBatch(db)
+  mergeIds.forEach((id) => batch.delete(doc(db, 'pickupLocations', id)))
+  await batch.commit()
 }
 
 /** Full renumber: rewrites sortOrder 10,20,30… for all locations in the given order. */

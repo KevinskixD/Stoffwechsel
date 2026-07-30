@@ -29,7 +29,15 @@ No test runner is configured in this repo.
    ```
 3. The seven default order statuses ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
    "Abgeholt", "Umtausch", "Abgeschlossen") are seeded automatically on first run if the
-   `orderStatuses` collection is empty (`src/firebase/seed.ts`).
+   `orderStatuses` collection is empty (`src/firebase/seed.ts`) — race-safe via a transaction
+   against an `appMeta/seed` marker doc, so two overlapping first-runs (two tabs, a dev
+   reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
+   is deliberately excluded from backups.
+4. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
+   to extract line items from an uploaded delivery-note PDF — set `VITE_GEMINI_API_KEY` (see
+   `.env.local.example`) or it throws at call time. The model is pinned to the `-latest` alias
+   (`gemini-flash-latest`), not a dated version, since dated versions can be deprecated out from
+   under existing API keys without notice.
 
 ## Architecture
 
@@ -37,7 +45,17 @@ No test runner is configured in this repo.
 
 Each domain lives under `src/features/<name>/` with the same internal shape: `api.ts` (Firestore
 reads/writes), `hooks.ts` (wraps `api.ts` calls in `useFirestoreQuery`), a `*ListPage.tsx`, and a
-`*Form.tsx`. `src/features/orders` is the exception — it has no `active` toggle (see below).
+`*Form.tsx` — this applies to `employees`, `articles`, and `orders` (which has no `active` toggle,
+see below). `orderStatuses` and `pickupLocations` are a second, simpler shape: no `Form.tsx`, just
+a single `*SettingsPage.tsx` with a plain `<ul>` (not `DataTable`) and inline click-to-edit renaming
+directly in the list — see `OrderStatusSettingsPage.tsx`/`PickupLocationSettingsPage.tsx`.
+
+These two shapes only cover the master-data CRUD features. The rest are one-off: `dashboard`
+(overview), `reports` (three read-only aggregate views over `orders`), `help` (static page),
+`orderListSettings`/`bestellFormularSettings`/`notificationSettings` (single-document settings,
+same pattern as described below), `bestellFormular` (Excel order-file generation),
+`lieferscheinCheck` (Gemini-based delivery-note matching), `orderHistory` (audit log), and
+`backup` (full-database export/import) — each shaped around what it actually does.
 
 Cross-cutting reusable pieces live in `src/shared/`:
 - `shared/components` — table, search, pagination, filters, badges used by every list page
@@ -48,6 +66,14 @@ Cross-cutting reusable pieces live in `src/shared/`:
   before assuming a logic bug
 - `shared/import` — the generic Excel import wizard (Upload → Mapping → Preview → Commit),
   parametrized per entity via `ImportEntityConfig<T, P>` (`shared/import/types.ts`)
+
+`notificationSettings` (`src/features/notificationSettings/`) is not a list feature — it's a single
+fixed document (`doc(db, 'notificationSettings', 'default')`) holding the greeting/line text
+templates used to notify an employee their order is pickup-ready. Placeholders (`{{NAME}}`,
+`{{VORNAME}}`, `{{NACHNAME}}`, `{{POSITIONEN}}`, `{{MENGE}}`, `{{ARTIKEL}}`, `{{GROESSE}}`,
+`{{ABHOLORT}}`) are filled by `shared/utils/notificationTemplate.ts`; `{{VORNAME}}`/`{{NACHNAME}}`
+are derived by splitting the denormalized `Order.employeeName` on its `", "` separator rather than
+looking up the `Employee` record, since `employeeName` is always written as `${lastName}, ${firstName}`.
 
 ### Firestore querying convention — and its main gotcha
 
@@ -75,8 +101,11 @@ was chosen over cursor pagination, while still keeping live `onSnapshot` updates
 `src/firebase/config.ts` initializes the app/db from `VITE_FIREBASE_*` env vars.
 `src/firebase/converters.ts` has one generic `createConverter<T>()` used by every collection: it
 strips `id` on write (Firestore stores it as the doc ID) and hydrates `createdAt`/`updatedAt`
-Timestamps into `Date` on read. There are exactly four collections, hardcoded in
-`firestore.rules`: `employees`, `articles`, `orderStatuses`, `orders`. All other paths are denied.
+Timestamps into `Date` on read. Every collection this app owns must be individually allow-listed
+in `firestore.rules` (currently 11 collections/singletons); all other paths are denied by the
+top-level catch-all. `src/features/backup/api.ts` doubles as the authoritative list — it
+enumerates every collection/singleton for export/restore, so a newly added collection needs an
+entry there too, or it's silently excluded from backups.
 These rules are **not real access control** (no auth exists) — they only limit blast radius if the
 Firebase config ever leaks, since this app has no Hosting deploy. If Hosting or public exposure of
 the config is ever introduced, revisit `firestore.rules` (add real auth) before relying on it.
@@ -89,6 +118,30 @@ on the order document, snapshotted at order-creation time, rather than joining a
 employee or article is later renamed or deactivated, and it's what makes the reports
 (`src/features/reports/reportQueries.ts`) able to aggregate from `orders` alone. Don't
 "normalize" this by replacing the denormalized fields with live lookups.
+
+### Two edit paths: full form vs. inline table cell
+
+Every `*ListPage.tsx` table still has a "Bearbeiten" link to the full `*Form.tsx` route — that
+remains the only way to change fields that touch more than one denormalized value at once (e.g.
+Employee/Article on an Order, which also rewrites `employeeName`/`articleName`/etc.). Simple
+scalar fields (text, number, date) are additionally editable inline, directly in the table cell,
+via `shared/components/EditableCell.tsx` (click reveals an input; Enter/blur commits; Escape
+cancels). Each editable column commits through a small, typed per-field patch function added to
+the feature's `api.ts` (e.g. `updateEmployeeField`, `updateArticleDeductibleAmount`,
+`updateOrderQuantity`) rather than the full-object `update*` function — this follows the
+already-established `setXActive`/`renameX`/`updateOrderStatus` precedent. FK/select fields (e.g.
+Article's `pickupLocationId`) reuse the same idiom as an inline `<select>` instead of `EditableCell`.
+
+### Order history (audit log)
+
+`src/features/orderHistory/` logs every order create/edit/status-change as an immutable entry
+(`OrderHistoryEntry`) in its own `orderHistory` collection — shown at `/orders/history`. Each
+order-mutating function in `orders/api.ts` fetches its own "before" snapshot internally (via
+`getOrder`/`getDocs`) rather than requiring callers to pass prior state, so adding a new mutation
+path doesn't require touching call sites. A change is tagged `'status_changed'` only when the
+status is the *sole* changed field; otherwise it's `'updated'` with a per-field diff. Deletes and
+the denormalized-field resync helpers (`updateOrderEmployeeNames` etc.) are intentionally not
+logged — this log covers order content, not housekeeping.
 
 ### Import wizard
 
@@ -106,3 +159,10 @@ employee or article is later renamed or deactivated, and it's what makes the rep
 The `xlsx` (SheetJS) dependency has two unpatched advisories (prototype pollution, ReDoS) with no
 npm fix available. Accepted because Excel files are only ever uploaded by the trusted single
 operator of this tool — but re-evaluate if that trust boundary ever changes.
+
+### Two Excel libraries, different jobs
+
+`xlsx` (SheetJS) reads/imports arbitrary user-supplied `.xlsx` files (`shared/import`). `exceljs`
+writes into the fixed Bestellformular template (`features/bestellFormular/generate.ts`),
+preserving the template's existing cell formatting/merges while only touching specific mapped
+cells — not interchangeable with `xlsx` for that job.

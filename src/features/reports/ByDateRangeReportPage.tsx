@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable'
+import { FilterDateInput } from '../../shared/components/FilterDateInput'
+import { FilterField } from '../../shared/components/FilterField'
 import { formatDateDe } from '../../shared/utils/date'
 import { useOrders } from '../orders/hooks'
 import { flattenReportRows } from './flattenReportRows'
@@ -32,25 +34,13 @@ export function ByDateRangeReportPage() {
       <p className="mb-5 text-sm text-black/50">Summen und Verteilungen über alle Bestellungen</p>
       <ReportTabs />
 
-      <div className="mb-4.5 flex gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-black/45">Von</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-lg border border-black/[0.12] px-3 py-2 text-[13.5px]"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-black/45">Bis</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-lg border border-black/[0.12] px-3 py-2 text-[13.5px]"
-          />
-        </div>
+      <div className="mb-4.5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <FilterField label="Von">
+          <FilterDateInput value={dateFrom} onChange={setDateFrom} />
+        </FilterField>
+        <FilterField label="Bis">
+          <FilterDateInput value={dateTo} onChange={setDateTo} />
+        </FilterField>
       </div>
 
       {loading ? (

@@ -1,8 +1,10 @@
+import { getDocs } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable'
 import { EditableCell } from '../../shared/components/EditableCell'
+import { FilterDateInput } from '../../shared/components/FilterDateInput'
 import { FilterField } from '../../shared/components/FilterField'
 import { FilterSelect } from '../../shared/components/FilterSelect'
 import { PageHeader, PrimaryLinkButton } from '../../shared/components/PageHeader'
@@ -17,9 +19,24 @@ import { articleDisplayLabel } from '../../types/article'
 import { employeeDisplayName } from '../../types/employee'
 import type { Order } from '../../types/order'
 import { useArticles } from '../articles/hooks'
+import { generateBestelldateien } from '../bestellFormular/generate'
+import { useBestellFormularSettings } from '../bestellFormular/hooks'
 import { useEmployees } from '../employees/hooks'
+import { useOrderListSettings } from '../orderListSettings/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
-import { deleteAllOrders, deleteOrder, deleteOrders, updateOrderDate, updateOrderQuantity, updateOrderStatus } from './api'
+import {
+  deleteAllOrders,
+  deleteOrder,
+  deleteOrders,
+  ordersQuery,
+  updateOrderArticleNames,
+  updateOrderDate,
+  updateOrderEmployeeNames,
+  updateOrderPickupLocationNames,
+  updateOrderQuantity,
+  updateOrderStatus,
+  updateOrdersStatus,
+} from './api'
 import { useOrders } from './hooks'
 
 const PAGE_SIZE = 25
@@ -49,6 +66,19 @@ export function OrderListPage() {
   const debouncedSearch = useDebounce(search)
   const [page, setPage] = useState(0)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [bestellConfirmOrders, setBestellConfirmOrders] = useState<Order[] | null>(null)
+  const [bestellBusy, setBestellBusy] = useState(false)
+  const [bestellMessage, setBestellMessage] = useState('')
+  const [pendingNameSync, setPendingNameSync] = useState<{ id: string; employeeName: string }[] | null>(null)
+  const [nameSyncMessage, setNameSyncMessage] = useState('')
+  const [pendingPickupLocationSync, setPendingPickupLocationSync] = useState<
+    { id: string; pickupLocationName: string }[] | null
+  >(null)
+  const [pickupLocationSyncMessage, setPickupLocationSyncMessage] = useState('')
+  const [pendingArticleSync, setPendingArticleSync] = useState<
+    { id: string; articleName: string; articleNumber: string }[] | null
+  >(null)
+  const [articleSyncMessage, setArticleSyncMessage] = useState('')
 
   const { data: rawOrders, loading } = useOrders({
     employeeId: employeeId || undefined,
@@ -59,6 +89,9 @@ export function OrderListPage() {
   const { data: employees } = useEmployees(true)
   const { data: articles } = useArticles(true)
   const { data: activeOrderStatuses } = useOrderStatuses(false)
+  const { data: allOrderStatuses } = useOrderStatuses(true)
+  const { data: bestellSettings } = useBestellFormularSettings()
+  const { data: buttonSettings } = useOrderListSettings()
 
   const statusOptions = Array.from(new Set(rawOrders.map((o) => o.status))).sort()
 
@@ -115,8 +148,9 @@ export function OrderListPage() {
     {
       key: 'status',
       header: 'Status',
+      align: 'center',
       render: (o) => {
-        const c = statusColors(o.status)
+        const c = statusColors(allOrderStatuses.find((s) => s.id === o.statusId) ?? { name: o.status })
         return (
           <select
             value={o.statusId}
@@ -159,6 +193,135 @@ export function OrderListPage() {
     },
   ]
 
+  const bestellTriggerStatus = allOrderStatuses.find((s) => s.id === bestellSettings.triggerStatusId)
+  const bestellTargetStatus = allOrderStatuses.find((s) => s.id === bestellSettings.targetStatusId)
+
+  function bestellFilePreviewCount(orders: Order[]): number {
+    const upperCapacity = bestellSettings.upperTable.endRow - bestellSettings.upperTable.startRow + 1
+    const lowerCapacity = bestellSettings.lowerTable.endRow - bestellSettings.lowerTable.startRow + 1
+    const upperCount = orders.filter((o) => o.articleNumber !== '').length
+    const lowerCount = orders.filter((o) => o.articleNumber === '').length
+    const upperPages = upperCapacity > 0 ? Math.ceil(upperCount / upperCapacity) : 0
+    const lowerPages = lowerCapacity > 0 ? Math.ceil(lowerCount / lowerCapacity) : 0
+    return Math.max(upperPages, lowerPages)
+  }
+
+  async function handleGenerateBestelldateiClick() {
+    setBestellMessage('')
+    if (!bestellSettings.templateBase64) {
+      setBestellMessage('Keine Vorlage konfiguriert. Siehe Einstellungen → Bestellformular.')
+      return
+    }
+    if (!bestellTriggerStatus) {
+      setBestellMessage('Kein auslösender Status konfiguriert. Siehe Einstellungen → Bestellformular.')
+      return
+    }
+    setBestellBusy(true)
+    const snapshot = await getDocs(ordersQuery({ status: bestellTriggerStatus.name }))
+    setBestellBusy(false)
+    const matchingOrders = snapshot.docs.map((d) => d.data())
+    if (matchingOrders.length === 0) {
+      setBestellMessage(`Keine Bestellungen mit Status "${bestellTriggerStatus.name}" gefunden.`)
+      return
+    }
+    setBestellConfirmOrders(matchingOrders)
+  }
+
+  async function handleConfirmGenerateBestelldatei() {
+    if (!bestellConfirmOrders) return
+    setBestellBusy(true)
+    const result = await generateBestelldateien(bestellConfirmOrders, bestellSettings, articles)
+    if (bestellTargetStatus) {
+      await updateOrdersStatus(result.includedOrderIds, bestellTargetStatus.id, bestellTargetStatus.name)
+    }
+    setBestellBusy(false)
+    setBestellConfirmOrders(null)
+    setBestellMessage(
+      `${result.fileCount} Datei(en) erzeugt, ${result.includedOrderIds.length} Bestellung(en)` +
+        (bestellTargetStatus ? ` auf "${bestellTargetStatus.name}" gesetzt.` : '.'),
+    )
+  }
+
+  function handleSyncEmployeeNamesClick() {
+    setNameSyncMessage('')
+    const employeeById = new Map(employees.map((e) => [e.id, e]))
+    const mismatches = rawOrders
+      .map((o) => {
+        const employee = employeeById.get(o.employeeId)
+        if (!employee) return null
+        const correctName = employeeDisplayName(employee)
+        return correctName !== o.employeeName ? { id: o.id, employeeName: correctName } : null
+      })
+      .filter((x): x is { id: string; employeeName: string } => x !== null)
+
+    if (mismatches.length === 0) {
+      setNameSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Mitarbeiternamen synchron.')
+      return
+    }
+    setPendingNameSync(mismatches)
+  }
+
+  async function handleConfirmSyncEmployeeNames() {
+    if (!pendingNameSync) return
+    await updateOrderEmployeeNames(pendingNameSync)
+    setNameSyncMessage(`${pendingNameSync.length} Bestellung(en) aktualisiert.`)
+    setPendingNameSync(null)
+  }
+
+  function handleSyncPickupLocationsClick() {
+    setPickupLocationSyncMessage('')
+    const articleById = new Map(articles.map((a) => [a.id, a]))
+    const mismatches = rawOrders
+      .map((o) => {
+        const article = articleById.get(o.articleId)
+        if (!article) return null
+        return article.pickupLocationName !== o.pickupLocationName
+          ? { id: o.id, pickupLocationName: article.pickupLocationName }
+          : null
+      })
+      .filter((x): x is { id: string; pickupLocationName: string } => x !== null)
+
+    if (mismatches.length === 0) {
+      setPickupLocationSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Abholorten synchron.')
+      return
+    }
+    setPendingPickupLocationSync(mismatches)
+  }
+
+  async function handleConfirmSyncPickupLocations() {
+    if (!pendingPickupLocationSync) return
+    await updateOrderPickupLocationNames(pendingPickupLocationSync)
+    setPickupLocationSyncMessage(`${pendingPickupLocationSync.length} Bestellung(en) aktualisiert.`)
+    setPendingPickupLocationSync(null)
+  }
+
+  function handleSyncArticleNamesClick() {
+    setArticleSyncMessage('')
+    const articleById = new Map(articles.map((a) => [a.id, a]))
+    const mismatches = rawOrders
+      .map((o) => {
+        const article = articleById.get(o.articleId)
+        if (!article) return null
+        return article.articleName !== o.articleName || article.articleNumber !== o.articleNumber
+          ? { id: o.id, articleName: article.articleName, articleNumber: article.articleNumber }
+          : null
+      })
+      .filter((x): x is { id: string; articleName: string; articleNumber: string } => x !== null)
+
+    if (mismatches.length === 0) {
+      setArticleSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Artikeldaten synchron.')
+      return
+    }
+    setPendingArticleSync(mismatches)
+  }
+
+  async function handleConfirmSyncArticleNames() {
+    if (!pendingArticleSync) return
+    await updateOrderArticleNames(pendingArticleSync)
+    setArticleSyncMessage(`${pendingArticleSync.length} Bestellung(en) aktualisiert.`)
+    setPendingArticleSync(null)
+  }
+
   return (
     <div className="px-11 pt-9 pb-15">
       <PageHeader
@@ -166,12 +329,54 @@ export function OrderListPage() {
         subtitle="Bestellte und ausgegebene Uniformteile pro Mitarbeiter"
         action={
           <>
-            <Link
-              to="/orders/import"
-              className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
-            >
-              Excel-Import
-            </Link>
+            {buttonSettings.showExcelImport ? (
+              <Link
+                to="/orders/import"
+                className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+              >
+                Excel-Import
+              </Link>
+            ) : null}
+            {buttonSettings.showEmployeeNameSync ? (
+              <button
+                type="button"
+                onClick={handleSyncEmployeeNamesClick}
+                title="Aktualisiert den gespeicherten Mitarbeiternamen auf allen aktuell geladenen Bestellungen (respektiert die Filter oben) anhand der aktuellen Mitarbeiterdaten."
+                className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+              >
+                Mitarbeiternamen abgleichen
+              </button>
+            ) : null}
+            {buttonSettings.showPickupLocationSync ? (
+              <button
+                type="button"
+                onClick={handleSyncPickupLocationsClick}
+                title="Aktualisiert den gespeicherten Abholort auf allen aktuell geladenen Bestellungen (respektiert die Filter oben) anhand der aktuellen Artikeldaten."
+                className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+              >
+                Abholorte abgleichen
+              </button>
+            ) : null}
+            {buttonSettings.showArticleDataSync ? (
+              <button
+                type="button"
+                onClick={handleSyncArticleNamesClick}
+                title="Aktualisiert Artikelbezeichnung und Artikelnummer auf allen aktuell geladenen Bestellungen (respektiert die Filter oben) anhand der aktuellen Artikeldaten."
+                className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+              >
+                Artikeldaten abgleichen
+              </button>
+            ) : null}
+            {buttonSettings.showGenerateBestellFile ? (
+              <button
+                type="button"
+                onClick={() => void handleGenerateBestelldateiClick()}
+                disabled={bestellBusy}
+                className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900 disabled:opacity-50"
+              >
+                Bestelldatei generieren
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setPendingDelete({ kind: 'all' })}
@@ -183,6 +388,13 @@ export function OrderListPage() {
           </>
         }
       />
+
+      {bestellMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{bestellMessage}</p> : null}
+      {nameSyncMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{nameSyncMessage}</p> : null}
+      {pickupLocationSyncMessage ? (
+        <p className="mb-4 text-[13px] font-semibold text-black/60">{pickupLocationSyncMessage}</p>
+      ) : null}
+      {articleSyncMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{articleSyncMessage}</p> : null}
 
       <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <FilterSelect label="Mitarbeiter" value={employeeId} onChange={setEmployeeId}>
@@ -210,20 +422,10 @@ export function OrderListPage() {
           ))}
         </FilterSelect>
         <FilterField label="Von">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full rounded-lg border border-black/[0.12] px-3 py-2 text-[13.5px]"
-          />
+          <FilterDateInput value={dateFrom} onChange={setDateFrom} />
         </FilterField>
         <FilterField label="Bis">
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-full rounded-lg border border-black/[0.12] px-3 py-2 text-[13.5px]"
-          />
+          <FilterDateInput value={dateTo} onChange={setDateTo} />
         </FilterField>
         <FilterField label="Suche">
           <SearchInput value={search} onChange={setSearch} placeholder="Mitarbeiter, Personalnummer oder Artikel…" />
@@ -246,7 +448,13 @@ export function OrderListPage() {
         <p className="text-gray-400">Lädt…</p>
       ) : (
         <>
-          <DataTable columns={columns} rows={pageItems} rowKey={(o) => o.id} />
+          <DataTable
+            columns={columns}
+            rows={pageItems}
+            rowKey={(o) => o.id}
+            onRowClick={(o, ev) => selection.toggleRowClick(o.id, ev.shiftKey)}
+            isRowSelected={(o) => selection.selectedIds.has(o.id)}
+          />
           <Pagination
             hasPrevious={page > 0}
             hasNext={page < pageCount - 1}
@@ -289,6 +497,60 @@ export function OrderListPage() {
           setPendingDelete(null)
         }}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={bestellConfirmOrders !== null}
+        title="Bestelldatei generieren"
+        message={
+          bestellConfirmOrders
+            ? `${bestellConfirmOrders.length} Bestellung(en) mit Status "${bestellTriggerStatus?.name}" werden in ` +
+              `${bestellFilePreviewCount(bestellConfirmOrders)} Datei(en) exportiert` +
+              (bestellTargetStatus ? ` und auf "${bestellTargetStatus.name}" gesetzt.` : '.')
+            : ''
+        }
+        confirmLabel="Generieren"
+        onConfirm={() => void handleConfirmGenerateBestelldatei()}
+        onCancel={() => setBestellConfirmOrders(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingNameSync !== null}
+        title="Mitarbeiternamen abgleichen"
+        message={
+          pendingNameSync
+            ? `${pendingNameSync.length} Bestellung(en) haben einen abweichenden Mitarbeiternamen und werden auf die aktuellen Mitarbeiterdaten aktualisiert.`
+            : ''
+        }
+        confirmLabel="Aktualisieren"
+        onConfirm={() => void handleConfirmSyncEmployeeNames()}
+        onCancel={() => setPendingNameSync(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingPickupLocationSync !== null}
+        title="Abholorte abgleichen"
+        message={
+          pendingPickupLocationSync
+            ? `${pendingPickupLocationSync.length} Bestellung(en) haben einen abweichenden Abholort und werden auf die aktuellen Artikeldaten aktualisiert.`
+            : ''
+        }
+        confirmLabel="Aktualisieren"
+        onConfirm={() => void handleConfirmSyncPickupLocations()}
+        onCancel={() => setPendingPickupLocationSync(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingArticleSync !== null}
+        title="Artikeldaten abgleichen"
+        message={
+          pendingArticleSync
+            ? `${pendingArticleSync.length} Bestellung(en) haben eine abweichende Artikelbezeichnung oder -nummer und werden auf die aktuellen Artikeldaten aktualisiert.`
+            : ''
+        }
+        confirmLabel="Aktualisieren"
+        onConfirm={() => void handleConfirmSyncArticleNames()}
+        onCancel={() => setPendingArticleSync(null)}
       />
     </div>
   )

@@ -10,7 +10,7 @@ function fillPlaceholders(template: string, values: Record<string, string>): str
 }
 
 /** employeeName is always denormalized as "Lastname, Firstname" (see employeeDisplayName). */
-function splitEmployeeName(employeeName: string): { firstName: string; lastName: string } {
+export function splitEmployeeName(employeeName: string): { firstName: string; lastName: string } {
   const separatorIndex = employeeName.indexOf(', ')
   if (separatorIndex === -1) return { firstName: '', lastName: employeeName }
   return {

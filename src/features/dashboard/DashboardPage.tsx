@@ -15,6 +15,7 @@ export function DashboardPage() {
   const { data: orders, loading: ordersLoading } = useOrders({})
   const { data: articles, loading: articlesLoading } = useArticles(false)
   const { data: statuses, loading: statusesLoading } = useOrderStatuses(false)
+  const { data: allStatuses } = useOrderStatuses(true)
   const { data: notificationSettings, loading: settingsLoading } = useNotificationSettings()
 
   const loading = ordersLoading || articlesLoading || statusesLoading || settingsLoading
@@ -96,7 +97,7 @@ export function DashboardPage() {
                           {o.articleName} · {formatDateDe(o.orderDate)}
                         </span>
                       </div>
-                      <StatusBadge status={o.status} />
+                      <StatusBadge status={o.status} color={allStatuses.find((s) => s.id === o.statusId)?.color} />
                     </Link>
                   ))}
                 </div>

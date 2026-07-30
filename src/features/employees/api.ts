@@ -19,7 +19,7 @@ import type { Employee, EmployeeInput } from '../../types/employee'
 const employeeConverter = createConverter<Employee>()
 const employeesCollection = collection(db, 'employees')
 
-const DELETE_BATCH_SIZE = 500
+const BATCH_SIZE = 500
 
 export function employeesQuery(includeInactive: boolean) {
   const converted = employeesCollection.withConverter(employeeConverter)
@@ -72,8 +72,8 @@ export async function deleteEmployee(id: string): Promise<void> {
 }
 
 export async function deleteEmployees(ids: string[]): Promise<void> {
-  for (let i = 0; i < ids.length; i += DELETE_BATCH_SIZE) {
-    const chunk = ids.slice(i, i + DELETE_BATCH_SIZE)
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
     chunk.forEach((id) => batch.delete(doc(db, 'employees', id)))
     await batch.commit()
@@ -83,4 +83,20 @@ export async function deleteEmployees(ids: string[]): Promise<void> {
 export async function deleteAllEmployees(): Promise<void> {
   const snapshot = await getDocs(employeesCollection)
   await deleteEmployees(snapshot.docs.map((docSnap) => docSnap.id))
+}
+
+/** Swaps firstName/lastName for each given employee — for fixing an import whose column mapping was reversed. */
+export async function swapEmployeeNames(employees: Pick<Employee, 'id' | 'firstName' | 'lastName'>[]): Promise<void> {
+  for (let i = 0; i < employees.length; i += BATCH_SIZE) {
+    const chunk = employees.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach((e) =>
+      batch.update(doc(db, 'employees', e.id), {
+        firstName: e.lastName,
+        lastName: e.firstName,
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await batch.commit()
+  }
 }

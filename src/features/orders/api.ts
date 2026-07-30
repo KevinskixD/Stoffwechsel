@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
@@ -16,10 +17,73 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
+import { articleDisplayLabel } from '../../types/article'
 import type { Order, OrderInput } from '../../types/order'
+import type { OrderHistoryChange } from '../../types/orderHistory'
+import { formatDateDe } from '../../shared/utils/date'
+import { logOrderHistory } from '../orderHistory/api'
 
 const orderConverter = createConverter<Order>()
 const ordersCollection = collection(db, 'orders')
+
+/** Firestore 'in' queries accept at most 30 values per query. */
+const IN_QUERY_CHUNK_SIZE = 30
+
+function buildCreatedChanges(input: OrderInput): OrderHistoryChange[] {
+  return [
+    { field: 'quantity', label: 'Menge', from: '', to: String(input.quantity) },
+    { field: 'status', label: 'Status', from: '', to: input.status },
+    { field: 'orderDate', label: 'Datum', from: '', to: formatDateDe(input.orderDate) },
+  ]
+}
+
+/** Diffs a full-form edit against the previous document — only changed fields are logged. */
+function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange[] {
+  const changes: OrderHistoryChange[] = []
+  if (before.employeeId !== after.employeeId) {
+    changes.push({ field: 'employeeName', label: 'Mitarbeiter', from: before.employeeName, to: after.employeeName })
+  }
+  if (before.articleId !== after.articleId) {
+    changes.push({
+      field: 'articleName',
+      label: 'Artikel',
+      from: articleDisplayLabel(before),
+      to: articleDisplayLabel(after),
+    })
+  }
+  if (before.quantity !== after.quantity) {
+    changes.push({ field: 'quantity', label: 'Menge', from: String(before.quantity), to: String(after.quantity) })
+  }
+  if (before.statusId !== after.statusId) {
+    changes.push({ field: 'status', label: 'Status', from: before.status, to: after.status })
+  }
+  if (before.orderDate !== after.orderDate) {
+    changes.push({
+      field: 'orderDate',
+      label: 'Datum',
+      from: formatDateDe(before.orderDate),
+      to: formatDateDe(after.orderDate),
+    })
+  }
+  return changes
+}
+
+/** Fetches the current status/employeeName/articleName for each id — used to diff bulk status writes. */
+async function fetchOrderSnapshotsByIds(
+  ids: string[],
+): Promise<Map<string, Pick<Order, 'status' | 'employeeName' | 'articleName'>>> {
+  const result = new Map<string, Pick<Order, 'status' | 'employeeName' | 'articleName'>>()
+  for (let i = 0; i < ids.length; i += IN_QUERY_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + IN_QUERY_CHUNK_SIZE)
+    if (chunk.length === 0) continue
+    const snapshot = await getDocs(query(ordersCollection.withConverter(orderConverter), where(documentId(), 'in', chunk)))
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data()
+      result.set(docSnap.id, { status: data.status, employeeName: data.employeeName, articleName: data.articleName })
+    })
+  }
+  return result
+}
 
 /** Firestore batch writes are capped at 500 ops; chunk any bulk write to this size. */
 const BATCH_SIZE = 500
@@ -57,39 +121,80 @@ export async function getOrder(id: string): Promise<Order | null> {
 }
 
 export async function createOrder(input: OrderInput): Promise<void> {
-  await addDoc(ordersCollection, {
+  const docRef = await addDoc(ordersCollection, {
     ...input,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+  await logOrderHistory({
+    orderId: docRef.id,
+    employeeName: input.employeeName,
+    articleName: input.articleName,
+    action: 'created',
+    changes: buildCreatedChanges(input),
+  })
 }
 
 export async function updateOrder(id: string, input: OrderInput): Promise<void> {
+  const before = await getOrder(id)
   await updateDoc(doc(db, 'orders', id), {
     ...input,
     updatedAt: serverTimestamp(),
   })
+  if (!before) return
+  const changes = buildOrderChanges(before, input)
+  if (changes.length === 0) return
+  // A full-form edit that only touched the status is still a status transition — badge it as such.
+  const action = changes.length === 1 && changes[0].field === 'status' ? 'status_changed' : 'updated'
+  await logOrderHistory({ orderId: id, employeeName: input.employeeName, articleName: input.articleName, action, changes })
 }
 
 export async function updateOrderStatus(id: string, statusId: string, status: string): Promise<void> {
+  const before = await getOrder(id)
   await updateDoc(doc(db, 'orders', id), {
     statusId,
     status,
     updatedAt: serverTimestamp(),
   })
+  if (!before || before.status === status) return
+  await logOrderHistory({
+    orderId: id,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'status_changed',
+    changes: [{ field: 'status', label: 'Status', from: before.status, to: status }],
+  })
 }
 
 export async function updateOrderQuantity(id: string, quantity: number): Promise<void> {
+  const before = await getOrder(id)
   await updateDoc(doc(db, 'orders', id), {
     quantity,
     updatedAt: serverTimestamp(),
   })
+  if (!before || before.quantity === quantity) return
+  await logOrderHistory({
+    orderId: id,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'updated',
+    changes: [{ field: 'quantity', label: 'Menge', from: String(before.quantity), to: String(quantity) }],
+  })
 }
 
 export async function updateOrderDate(id: string, orderDate: string): Promise<void> {
+  const before = await getOrder(id)
   await updateDoc(doc(db, 'orders', id), {
     orderDate,
     updatedAt: serverTimestamp(),
+  })
+  if (!before || before.orderDate === orderDate) return
+  await logOrderHistory({
+    orderId: id,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'updated',
+    changes: [{ field: 'orderDate', label: 'Datum', from: formatDateDe(before.orderDate), to: formatDateDe(orderDate) }],
   })
 }
 
@@ -112,10 +217,69 @@ export async function deleteAllOrders(): Promise<void> {
 }
 
 export async function updateOrdersStatus(ids: string[], statusId: string, status: string): Promise<void> {
+  const before = await fetchOrderSnapshotsByIds(ids)
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
     chunk.forEach((id) => batch.update(doc(db, 'orders', id), { statusId, status, updatedAt: serverTimestamp() }))
+    await batch.commit()
+  }
+  await Promise.all(
+    ids.map((id) => {
+      const snap = before.get(id)
+      if (!snap || snap.status === status) return Promise.resolve()
+      return logOrderHistory({
+        orderId: id,
+        employeeName: snap.employeeName,
+        articleName: snap.articleName,
+        action: 'status_changed',
+        changes: [{ field: 'status', label: 'Status', from: snap.status, to: status }],
+      })
+    }),
+  )
+}
+
+/**
+ * Overwrites the denormalized `employeeName` on each given order — for re-syncing orders whose
+ * snapshot went stale (e.g. an employee's first/last name was corrected after the order was placed).
+ */
+export async function updateOrderEmployeeNames(updates: { id: string; employeeName: string }[]): Promise<void> {
+  for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+    const chunk = updates.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach(({ id, employeeName }) => batch.update(doc(db, 'orders', id), { employeeName, updatedAt: serverTimestamp() }))
+    await batch.commit()
+  }
+}
+
+/**
+ * Overwrites the denormalized `articleName`/`articleNumber` on each given order — for re-syncing
+ * orders whose snapshot went stale (e.g. an article's number was corrected after the order was placed).
+ */
+export async function updateOrderArticleNames(
+  updates: { id: string; articleName: string; articleNumber: string }[],
+): Promise<void> {
+  for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+    const chunk = updates.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach(({ id, articleName, articleNumber }) =>
+      batch.update(doc(db, 'orders', id), { articleName, articleNumber, updatedAt: serverTimestamp() }),
+    )
+    await batch.commit()
+  }
+}
+
+/**
+ * Overwrites the denormalized `pickupLocationName` on each given order — for re-syncing orders
+ * whose snapshot went stale (e.g. a pickup location was renamed/merged after the order was placed).
+ */
+export async function updateOrderPickupLocationNames(updates: { id: string; pickupLocationName: string }[]): Promise<void> {
+  for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+    const chunk = updates.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach(({ id, pickupLocationName }) =>
+      batch.update(doc(db, 'orders', id), { pickupLocationName, updatedAt: serverTimestamp() }),
+    )
     await batch.commit()
   }
 }
@@ -127,7 +291,16 @@ export async function reassignOrdersStatus(
   toStatusName: string,
 ): Promise<void> {
   const snapshot = await getDocs(query(ordersCollection, where('statusId', 'in', fromStatusIds)))
-  const ids = snapshot.docs.map((docSnap) => docSnap.id)
+  const affected = snapshot.docs.map((docSnap) => {
+    const data = docSnap.data()
+    return {
+      id: docSnap.id,
+      status: data.status as string,
+      employeeName: data.employeeName as string,
+      articleName: data.articleName as string,
+    }
+  })
+  const ids = affected.map((o) => o.id)
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
@@ -140,4 +313,17 @@ export async function reassignOrdersStatus(
     )
     await batch.commit()
   }
+  await Promise.all(
+    affected
+      .filter((o) => o.status !== toStatusName)
+      .map((o) =>
+        logOrderHistory({
+          orderId: o.id,
+          employeeName: o.employeeName,
+          articleName: o.articleName,
+          action: 'status_changed',
+          changes: [{ field: 'status', label: 'Status', from: o.status, to: toStatusName }],
+        }),
+      ),
+  )
 }
