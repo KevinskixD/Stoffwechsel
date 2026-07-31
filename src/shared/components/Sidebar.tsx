@@ -1,8 +1,10 @@
 import type { ComponentType } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../assets/oerk-logo.png'
 import {
   ArticleIcon,
+  ChevronDownIcon,
   DashboardIcon,
   DeliveryIcon,
   GearIcon,
@@ -60,7 +62,7 @@ const NAV_ITEMS: NavItemDef[] = [
   },
 ]
 
-const BOTTOM_ITEMS: NavItemDef[] = [
+const SETTINGS_ITEMS: NavItemDef[] = [
   {
     to: '/settings/order-statuses',
     label: 'Bestellstatus',
@@ -100,6 +102,8 @@ const BOTTOM_ITEMS: NavItemDef[] = [
   { to: '/help', label: 'Hilfe', Icon: HelpIcon, match: (path) => path.startsWith('/help') },
 ]
 
+const isSettingsPath = (path: string) => SETTINGS_ITEMS.some((item) => item.match(path))
+
 function NavRow({ to, label, Icon, active }: { to: string; label: string; Icon: ComponentType; active: boolean }) {
   return (
     <Link
@@ -118,6 +122,8 @@ function NavRow({ to, label, Icon, active }: { to: string; label: string; Icon: 
 
 export function Sidebar() {
   const { pathname } = useLocation()
+  const settingsActive = isSettingsPath(pathname)
+  const [settingsOpen, setSettingsOpen] = useState(settingsActive)
 
   return (
     <div className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-black/[0.08] bg-white">
@@ -136,9 +142,37 @@ export function Sidebar() {
       </nav>
 
       <div className="flex flex-col gap-0.5 border-t border-black/[0.06] p-3 pb-4">
-        {BOTTOM_ITEMS.map((item) => (
-          <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
-        ))}
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((open) => !open)}
+          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-brand-tint ${
+            settingsActive ? 'text-brand' : 'text-gray-900'
+          }`}
+        >
+          <span
+            className={`flex h-5 w-5 shrink-0 items-center justify-center ${
+              settingsActive ? 'text-brand' : 'text-black/55'
+            }`}
+          >
+            <GearIcon />
+          </span>
+          <span className="flex-1 text-left">Einstellungen</span>
+          <span
+            className={`flex h-4 w-4 shrink-0 items-center justify-center text-black/40 transition-transform ${
+              settingsOpen ? 'rotate-180' : ''
+            }`}
+          >
+            <ChevronDownIcon />
+          </span>
+        </button>
+
+        {settingsOpen && (
+          <div className="flex flex-col gap-0.5 pl-4">
+            {SETTINGS_ITEMS.map((item) => (
+              <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -167,7 +167,7 @@ export function LieferscheinCheckPage() {
             type="file"
             accept="application/pdf"
             onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
-            className="text-[13.5px]"
+            className="block text-[13px] text-black/65 file:mr-3.5 file:rounded-lg file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-[13px] file:font-bold file:text-brand hover:file:bg-brand/15"
           />
         </FormField>
         {parsing && <p className="mt-3 text-[13px] text-black/55">Wird mit Gemini analysiert…</p>}

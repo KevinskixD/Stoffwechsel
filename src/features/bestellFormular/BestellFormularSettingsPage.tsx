@@ -179,7 +179,12 @@ export function BestellFormularSettingsPage() {
 
       <div className="max-w-2xl space-y-5">
         <FormField label="Vorlage (.xlsx)">
-          <input type="file" accept=".xlsx" onChange={handleFileChange} className="text-[13.5px]" />
+          <input
+            type="file"
+            accept=".xlsx"
+            onChange={handleFileChange}
+            className="block text-[13px] text-black/65 file:mr-3.5 file:rounded-lg file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-[13px] file:font-bold file:text-brand hover:file:bg-brand/15"
+          />
           {templateFileName ? (
             <p className="mt-1.5 text-[13px] text-black/45">Aktuell gespeichert: {templateFileName}</p>
           ) : (
