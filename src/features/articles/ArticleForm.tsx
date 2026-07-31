@@ -11,6 +11,8 @@ const emptyForm: ArticleInput = {
   articleNumber: '',
   hasDeductible: false,
   deductibleAmount: 0,
+  trackInventory: false,
+  inventoryQuantity: 0,
   size: '',
   pickupLocationId: '',
   pickupLocationName: '',
@@ -37,6 +39,8 @@ export function ArticleForm() {
           articleNumber: article.articleNumber,
           hasDeductible: article.hasDeductible,
           deductibleAmount: article.deductibleAmount,
+          trackInventory: article.trackInventory,
+          inventoryQuantity: article.inventoryQuantity,
           size: article.size || extractSizeFromArticleName(article.articleName),
           pickupLocationId: article.pickupLocationId ?? '',
           pickupLocationName: article.pickupLocationName ?? '',
@@ -66,6 +70,8 @@ export function ArticleForm() {
         articleNumber: form.articleNumber.trim(),
         hasDeductible: form.hasDeductible,
         deductibleAmount: form.hasDeductible ? form.deductibleAmount : 0,
+        trackInventory: form.trackInventory,
+        inventoryQuantity: form.trackInventory ? form.inventoryQuantity : 0,
         size: form.size.trim(),
         pickupLocationId: form.pickupLocationId,
         pickupLocationName: form.pickupLocationName,
@@ -160,6 +166,30 @@ export function ArticleForm() {
               step="0.05"
               value={form.deductibleAmount}
               onChange={(e) => setForm({ ...form, deductibleAmount: e.target.valueAsNumber || 0 })}
+              className={formInputClass}
+            />
+          </FormField>
+        ) : null}
+
+        <FormField label="Bestand">
+          <label className="flex items-center gap-2 text-[13.5px] text-gray-900">
+            <input
+              type="checkbox"
+              checked={form.trackInventory}
+              onChange={(e) => setForm({ ...form, trackInventory: e.target.checked })}
+              className="h-4 w-4 rounded border-black/[0.25] accent-brand"
+            />
+            Bestand erfassen
+          </label>
+        </FormField>
+
+        {form.trackInventory ? (
+          <FormField label="Aktueller Bestand">
+            <input
+              type="number"
+              step="1"
+              value={form.inventoryQuantity}
+              onChange={(e) => setForm({ ...form, inventoryQuantity: e.target.valueAsNumber || 0 })}
               className={formInputClass}
             />
           </FormField>

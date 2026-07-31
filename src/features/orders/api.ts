@@ -20,11 +20,19 @@ import { createConverter } from '../../firebase/converters'
 import { articleDisplayLabel } from '../../types/article'
 import type { Order, OrderInput } from '../../types/order'
 import type { OrderHistoryChange } from '../../types/orderHistory'
-import { formatDateDe } from '../../shared/utils/date'
+import { formatDateDe, todayISO } from '../../shared/utils/date'
 import { logOrderHistory } from '../orderHistory/api'
+import { adjustArticleInventory } from '../articles/api'
 
 const orderConverter = createConverter<Order>()
 const ordersCollection = collection(db, 'orders')
+
+/**
+ * Statuses have no reserved id/flag (they're freely renameable/mergeable — see orderStatuses/api.ts),
+ * so "the order was actually placed" is identified by this literal name, same convention already used
+ * by DashboardPage/LieferscheinCheckPage/BestellFormularSettingsPage's default-suggest logic.
+ */
+const ORDERED_STATUS_NAME = 'Bestellt'
 
 /** Firestore 'in' queries accept at most 30 values per query. */
 const IN_QUERY_CHUNK_SIZE = 30
@@ -68,18 +76,25 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
   return changes
 }
 
-/** Fetches the current status/employeeName/articleName for each id — used to diff bulk status writes. */
-async function fetchOrderSnapshotsByIds(
-  ids: string[],
-): Promise<Map<string, Pick<Order, 'status' | 'employeeName' | 'articleName'>>> {
-  const result = new Map<string, Pick<Order, 'status' | 'employeeName' | 'articleName'>>()
+type OrderSnapshotFields = Pick<Order, 'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate'>
+
+/** Fetches the current status/employeeName/articleName/articleId/quantity/orderDate for each id — used to diff bulk status writes and restore inventory on bulk delete. */
+async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, OrderSnapshotFields>> {
+  const result = new Map<string, OrderSnapshotFields>()
   for (let i = 0; i < ids.length; i += IN_QUERY_CHUNK_SIZE) {
     const chunk = ids.slice(i, i + IN_QUERY_CHUNK_SIZE)
     if (chunk.length === 0) continue
     const snapshot = await getDocs(query(ordersCollection.withConverter(orderConverter), where(documentId(), 'in', chunk)))
     snapshot.docs.forEach((docSnap) => {
       const data = docSnap.data()
-      result.set(docSnap.id, { status: data.status, employeeName: data.employeeName, articleName: data.articleName })
+      result.set(docSnap.id, {
+        status: data.status,
+        employeeName: data.employeeName,
+        articleName: data.articleName,
+        articleId: data.articleId,
+        quantity: data.quantity,
+        orderDate: data.orderDate,
+      })
     })
   }
   return result
@@ -133,6 +148,7 @@ export async function createOrder(input: OrderInput): Promise<void> {
     action: 'created',
     changes: buildCreatedChanges(input),
   })
+  await adjustArticleInventory(input.articleId, -input.quantity)
 }
 
 export async function updateOrder(id: string, input: OrderInput): Promise<void> {
@@ -142,6 +158,12 @@ export async function updateOrder(id: string, input: OrderInput): Promise<void> 
     updatedAt: serverTimestamp(),
   })
   if (!before) return
+  if (before.articleId !== input.articleId) {
+    await adjustArticleInventory(before.articleId, before.quantity)
+    await adjustArticleInventory(input.articleId, -input.quantity)
+  } else if (before.quantity !== input.quantity) {
+    await adjustArticleInventory(input.articleId, before.quantity - input.quantity)
+  }
   const changes = buildOrderChanges(before, input)
   if (changes.length === 0) return
   // A full-form edit that only touched the status is still a status transition — badge it as such.
@@ -151,18 +173,25 @@ export async function updateOrder(id: string, input: OrderInput): Promise<void> 
 
 export async function updateOrderStatus(id: string, statusId: string, status: string): Promise<void> {
   const before = await getOrder(id)
+  const becomesOrdered = status === ORDERED_STATUS_NAME && before?.status !== status
+  const orderDate = becomesOrdered ? todayISO() : undefined
   await updateDoc(doc(db, 'orders', id), {
     statusId,
     status,
+    ...(orderDate ? { orderDate } : {}),
     updatedAt: serverTimestamp(),
   })
   if (!before || before.status === status) return
+  const changes: OrderHistoryChange[] = [{ field: 'status', label: 'Status', from: before.status, to: status }]
+  if (orderDate) {
+    changes.push({ field: 'orderDate', label: 'Datum', from: formatDateDe(before.orderDate), to: formatDateDe(orderDate) })
+  }
   await logOrderHistory({
     orderId: id,
     employeeName: before.employeeName,
     articleName: before.articleName,
     action: 'status_changed',
-    changes: [{ field: 'status', label: 'Status', from: before.status, to: status }],
+    changes,
   })
 }
 
@@ -173,6 +202,7 @@ export async function updateOrderQuantity(id: string, quantity: number): Promise
     updatedAt: serverTimestamp(),
   })
   if (!before || before.quantity === quantity) return
+  await adjustArticleInventory(before.articleId, before.quantity - quantity)
   await logOrderHistory({
     orderId: id,
     employeeName: before.employeeName,
@@ -199,16 +229,26 @@ export async function updateOrderDate(id: string, orderDate: string): Promise<vo
 }
 
 export async function deleteOrder(id: string): Promise<void> {
+  const order = await getOrder(id)
   await deleteDoc(doc(db, 'orders', id))
+  if (order) await adjustArticleInventory(order.articleId, order.quantity)
 }
 
 export async function deleteOrders(ids: string[]): Promise<void> {
+  const before = await fetchOrderSnapshotsByIds(ids)
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
     chunk.forEach((id) => batch.delete(doc(db, 'orders', id)))
     await batch.commit()
   }
+  const restockByArticle = new Map<string, number>()
+  before.forEach(({ articleId, quantity }) => {
+    restockByArticle.set(articleId, (restockByArticle.get(articleId) ?? 0) + quantity)
+  })
+  await Promise.all(
+    Array.from(restockByArticle.entries()).map(([articleId, quantity]) => adjustArticleInventory(articleId, quantity)),
+  )
 }
 
 export async function deleteAllOrders(): Promise<void> {
@@ -218,22 +258,30 @@ export async function deleteAllOrders(): Promise<void> {
 
 export async function updateOrdersStatus(ids: string[], statusId: string, status: string): Promise<void> {
   const before = await fetchOrderSnapshotsByIds(ids)
+  const becomesOrdered = status === ORDERED_STATUS_NAME
+  const orderDate = becomesOrdered ? todayISO() : undefined
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
-    chunk.forEach((id) => batch.update(doc(db, 'orders', id), { statusId, status, updatedAt: serverTimestamp() }))
+    chunk.forEach((id) =>
+      batch.update(doc(db, 'orders', id), { statusId, status, ...(orderDate ? { orderDate } : {}), updatedAt: serverTimestamp() }),
+    )
     await batch.commit()
   }
   await Promise.all(
     ids.map((id) => {
       const snap = before.get(id)
       if (!snap || snap.status === status) return Promise.resolve()
+      const changes: OrderHistoryChange[] = [{ field: 'status', label: 'Status', from: snap.status, to: status }]
+      if (orderDate) {
+        changes.push({ field: 'orderDate', label: 'Datum', from: formatDateDe(snap.orderDate), to: formatDateDe(orderDate) })
+      }
       return logOrderHistory({
         orderId: id,
         employeeName: snap.employeeName,
         articleName: snap.articleName,
         action: 'status_changed',
-        changes: [{ field: 'status', label: 'Status', from: snap.status, to: status }],
+        changes,
       })
     }),
   )

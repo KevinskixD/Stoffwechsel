@@ -143,6 +143,22 @@ status is the *sole* changed field; otherwise it's `'updated'` with a per-field 
 the denormalized-field resync helpers (`updateOrderEmployeeNames` etc.) are intentionally not
 logged — this log covers order content, not housekeeping.
 
+### Optional per-article inventory tracking
+
+`Article.trackInventory`/`inventoryQuantity` follow the same toggle+value convention as
+`hasDeductible`/`deductibleAmount` (zeroed in `createArticle`/`updateArticle` when the toggle is
+off). The stock count only ever moves through `adjustArticleInventory` in `articles/api.ts` — a
+relative-delta helper built on Firestore's atomic `increment()` — called from every order-mutating
+function in `orders/api.ts` (`createOrder`, `updateOrder`, `updateOrderQuantity`, `deleteOrder`,
+`deleteOrders`) that touches `articleId`/`quantity`. Two things to know before touching this:
+- The Excel bulk order import (`shared/import`, `orderImportConfig.ts`) writes order docs directly
+  and bypasses `orders/api.ts` entirely, so imported orders **do not** adjust inventory — a
+  deliberate scope decision (see the comment in `orderImportConfig.ts`), not an oversight to fix.
+- Stock is allowed to go negative (an over-order deficit is valid data), but `OrderForm` and
+  `OrderListPage`'s inline quantity `EditableCell` both show a `ConfirmDialog` before committing a
+  change that would push it below zero — bridged via a resolver held in local state, since
+  `ConfirmDialog` is callback-based, not promise-based.
+
 ### Import wizard
 
 `shared/import/ImportWizard.tsx` drives a 4-step flow (`upload` → `mapping` → `preview` →

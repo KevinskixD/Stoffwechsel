@@ -175,6 +175,9 @@ export const orderImportConfig: ImportEntityConfig<Order, OrderImportPrefetch> =
       }
     }
   },
+  // Note: this bypasses orders/api.ts entirely (CommitStep writes docs directly), so imported
+  // orders do NOT adjust article inventory — accepted, since import is for bulk/historical data
+  // entry where stock reconciliation doesn't apply the same way as a manually placed order.
   mapRowToDoc: (data) => ({
     employeeId: data.employeeId as string,
     employeeName: data.employeeName as string,

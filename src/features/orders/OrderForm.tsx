@@ -4,6 +4,7 @@ import { useArticles } from '../articles/hooks'
 import { useEmployees } from '../employees/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { Autocomplete, type AutocompleteOption } from '../../shared/components/Autocomplete'
+import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { FormCard, FormField, formInputClass } from '../../shared/components/FormField'
 import { todayISO } from '../../shared/utils/date'
 import { articleDisplayLabel } from '../../types/article'
@@ -52,6 +53,12 @@ export function OrderForm() {
   const [loading, setLoading] = useState(isEdit)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [original, setOriginal] = useState<{ articleId: string; quantity: number } | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    payload: OrderInput
+    articleName: string
+    projected: number
+  } | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -70,6 +77,7 @@ export function OrderForm() {
           status: order.status,
           orderDate: order.orderDate,
         })
+        setOriginal({ articleId: order.articleId, quantity: order.quantity })
       }
       setLoading(false)
     })
@@ -109,6 +117,33 @@ export function OrderForm() {
     })
   }
 
+  const selectedArticle = articles.find((a) => a.id === form.articleId)
+
+  /** Stock the selected article would have after this order is saved, or null if it isn't tracked. */
+  function projectedStock(quantity: number): number | null {
+    if (!selectedArticle || !selectedArticle.trackInventory) return null
+    const sameArticleAsOriginal = isEdit && original && original.articleId === selectedArticle.id
+    return sameArticleAsOriginal
+      ? selectedArticle.inventoryQuantity - (quantity - original!.quantity)
+      : selectedArticle.inventoryQuantity - quantity
+  }
+
+  async function doSave(payload: OrderInput) {
+    setSaving(true)
+    try {
+      if (isEdit && id) {
+        await updateOrder(id, payload)
+      } else {
+        await createOrder(payload)
+      }
+      navigate('/orders')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
@@ -137,19 +172,13 @@ export function OrderForm() {
       orderDate: form.orderDate,
     }
 
-    setSaving(true)
-    try {
-      if (isEdit && id) {
-        await updateOrder(id, payload)
-      } else {
-        await createOrder(payload)
-      }
-      navigate('/orders')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setSaving(false)
+    const projected = projectedStock(quantity)
+    if (projected !== null && projected < 0) {
+      setPendingConfirm({ payload, articleName: form.articleName, projected })
+      return
     }
+
+    await doSave(payload)
   }
 
   if (loading) return <p className="p-6 text-gray-400">Lädt…</p>
@@ -185,6 +214,23 @@ export function OrderForm() {
             }}
             placeholder="Artikel auswählen…"
           />
+          {selectedArticle?.trackInventory ? (
+            (() => {
+              const quantity = Number(form.quantity)
+              const projected = Number.isInteger(quantity) && quantity > 0 ? projectedStock(quantity) : null
+              return (
+                <p className="mt-1 text-[12.5px] text-black/45">
+                  Lagerbestand: {selectedArticle.inventoryQuantity}
+                  {projected !== null ? (
+                    <>
+                      {' · nach dieser Bestellung: '}
+                      <span className={projected < 0 ? 'font-bold text-red-600' : undefined}>{projected}</span>
+                    </>
+                  ) : null}
+                </p>
+              )
+            })()
+          ) : null}
         </FormField>
 
         <FormField label="Menge">
@@ -246,6 +292,22 @@ export function OrderForm() {
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        title="Bestand würde negativ werden"
+        message={
+          pendingConfirm
+            ? `Der Lagerbestand von "${pendingConfirm.articleName}" würde auf ${pendingConfirm.projected} sinken. Trotzdem speichern?`
+            : ''
+        }
+        confirmLabel="Trotzdem speichern"
+        onConfirm={() => {
+          if (pendingConfirm) void doSave(pendingConfirm.payload)
+          setPendingConfirm(null)
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </FormCard>
   )
 }

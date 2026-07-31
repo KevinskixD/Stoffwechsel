@@ -25,6 +25,7 @@ import {
   setArticleActive,
   updateArticleDeductibleAmount,
   updateArticleField,
+  updateArticleInventoryQuantity,
 } from './api'
 import { useArticles } from './hooks'
 
@@ -100,6 +101,24 @@ export function ArticleListPage() {
               }}
             />
           </span>
+        ) : (
+          <span className="text-black/35">–</span>
+        ),
+    },
+    {
+      key: 'inventory',
+      header: 'Bestand',
+      render: (a) =>
+        a.trackInventory ? (
+          <EditableCell
+            type="number"
+            step={1}
+            value={String(a.inventoryQuantity)}
+            onCommit={(v) => {
+              const n = Number(v)
+              if (Number.isInteger(n)) void updateArticleInventoryQuantity(a.id, n)
+            }}
+          />
         ) : (
           <span className="text-black/35">–</span>
         ),

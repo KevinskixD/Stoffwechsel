@@ -5,6 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   orderBy,
   query,
   serverTimestamp,
@@ -38,6 +39,7 @@ export async function createArticle(input: ArticleInput): Promise<void> {
   await addDoc(articlesCollection, {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
+    inventoryQuantity: input.trackInventory ? input.inventoryQuantity : 0,
     active: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -48,6 +50,7 @@ export async function updateArticle(id: string, input: ArticleInput): Promise<vo
   await updateDoc(doc(db, 'articles', id), {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
+    inventoryQuantity: input.trackInventory ? input.inventoryQuantity : 0,
     updatedAt: serverTimestamp(),
   })
 }
@@ -73,6 +76,29 @@ export async function updateArticleField(
 export async function updateArticleDeductibleAmount(id: string, deductibleAmount: number): Promise<void> {
   await updateDoc(doc(db, 'articles', id), {
     deductibleAmount,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function updateArticleInventoryQuantity(id: string, inventoryQuantity: number): Promise<void> {
+  await updateDoc(doc(db, 'articles', id), {
+    inventoryQuantity,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/**
+ * Adjusts an article's stock by a relative delta (positive = restock, negative = consume),
+ * used by order create/edit/delete. No-op if the article doesn't track inventory. Uses
+ * Firestore's atomic `increment()` for the write; the preceding read only gates whether
+ * tracking is on for this article, so it doesn't need a transaction.
+ */
+export async function adjustArticleInventory(articleId: string, delta: number): Promise<void> {
+  if (!articleId || delta === 0) return
+  const article = await getArticle(articleId)
+  if (!article || !article.trackInventory) return
+  await updateDoc(doc(db, 'articles', articleId), {
+    inventoryQuantity: increment(delta),
     updatedAt: serverTimestamp(),
   })
 }

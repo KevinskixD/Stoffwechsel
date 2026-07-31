@@ -5,6 +5,9 @@ export interface Article {
   hasDeductible: boolean
   /** EUR amount, only meaningful when hasDeductible is true; 0 otherwise. */
   deductibleAmount: number
+  trackInventory: boolean
+  /** Current stock count, only meaningful when trackInventory is true; 0 otherwise. Can go negative (over-ordered). */
+  inventoryQuantity: number
   active: boolean
   /** Free text, e.g. "M", "42"; '' if unknown. Best-effort extracted from articleName. */
   size: string
@@ -22,6 +25,8 @@ export type ArticleInput = Pick<
   | 'articleNumber'
   | 'hasDeductible'
   | 'deductibleAmount'
+  | 'trackInventory'
+  | 'inventoryQuantity'
   | 'size'
   | 'pickupLocationId'
   | 'pickupLocationName'

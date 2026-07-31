@@ -79,6 +79,12 @@ export function OrderListPage() {
     { id: string; articleName: string; articleNumber: string }[] | null
   >(null)
   const [articleSyncMessage, setArticleSyncMessage] = useState('')
+  const [pendingQuantityConfirm, setPendingQuantityConfirm] = useState<{
+    order: Order
+    quantity: number
+    projected: number
+    resolve: (ok: boolean) => void
+  } | null>(null)
 
   const { data: rawOrders, loading } = useOrders({
     employeeId: employeeId || undefined,
@@ -111,6 +117,18 @@ export function OrderListPage() {
   const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const selection = useRowSelection(pageItems)
 
+  async function handleQuantityCommit(order: Order, quantity: number) {
+    const article = articles.find((a) => a.id === order.articleId)
+    const projected = article?.trackInventory ? article.inventoryQuantity - (quantity - order.quantity) : null
+    if (projected !== null && projected < 0) {
+      const confirmed = await new Promise<boolean>((resolve) =>
+        setPendingQuantityConfirm({ order, quantity, projected, resolve }),
+      )
+      if (!confirmed) return
+    }
+    await updateOrderQuantity(order.id, quantity)
+  }
+
   const columns: DataTableColumn<Order>[] = [
     selection.column,
     {
@@ -140,7 +158,7 @@ export function OrderListPage() {
           value={String(o.quantity)}
           onCommit={(v) => {
             const n = Number(v)
-            if (Number.isInteger(n) && n > 0) void updateOrderQuantity(o.id, n)
+            if (Number.isInteger(n) && n > 0) void handleQuantityCommit(o, n)
           }}
         />
       ),
@@ -538,6 +556,25 @@ export function OrderListPage() {
         confirmLabel="Aktualisieren"
         onConfirm={() => void handleConfirmSyncPickupLocations()}
         onCancel={() => setPendingPickupLocationSync(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingQuantityConfirm !== null}
+        title="Bestand würde negativ werden"
+        message={
+          pendingQuantityConfirm
+            ? `Der Lagerbestand von "${pendingQuantityConfirm.order.articleName}" würde auf ${pendingQuantityConfirm.projected} sinken. Trotzdem speichern?`
+            : ''
+        }
+        confirmLabel="Trotzdem speichern"
+        onConfirm={() => {
+          pendingQuantityConfirm?.resolve(true)
+          setPendingQuantityConfirm(null)
+        }}
+        onCancel={() => {
+          pendingQuantityConfirm?.resolve(false)
+          setPendingQuantityConfirm(null)
+        }}
       />
 
       <ConfirmDialog
