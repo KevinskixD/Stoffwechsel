@@ -24,6 +24,7 @@ import { useBestellFormularSettings } from '../bestellFormular/hooks'
 import { useEmployees } from '../employees/hooks'
 import { useOrderListSettings } from '../orderListSettings/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
+import { ExchangeOrderDialog } from './ExchangeOrderDialog'
 import {
   deleteAllOrders,
   deleteOrder,
@@ -40,6 +41,9 @@ import {
 import { useOrders } from './hooks'
 
 const PAGE_SIZE = 25
+
+/** Only orders in this status can be exchanged — same literal-name convention as ORDERED_STATUS_NAME in api.ts. */
+const PICKED_UP_STATUS_NAME = 'Abgeholt'
 
 type PendingDelete = { kind: 'single'; order: Order } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
 
@@ -85,6 +89,7 @@ export function OrderListPage() {
     projected: number
     resolve: (ok: boolean) => void
   } | null>(null)
+  const [exchangingOrder, setExchangingOrder] = useState<Order | null>(null)
 
   const { data: rawOrders, loading } = useOrders({
     employeeId: employeeId || undefined,
@@ -146,7 +151,31 @@ export function OrderListPage() {
       ),
     },
     { key: 'employeeName', header: 'Mitarbeiter', render: (o) => o.employeeName },
-    { key: 'articleName', header: 'Artikel', render: (o) => articleDisplayLabel(o) },
+    {
+      key: 'articleName',
+      header: 'Artikel',
+      render: (o) => (
+        <div>
+          {articleDisplayLabel(o)}
+          {o.exchangedToOrderId ? (
+            <Link
+              to={`/orders/${o.exchangedToOrderId}/edit`}
+              className="block text-xs font-semibold text-black/45 hover:underline"
+            >
+              → umgetauscht zu {o.exchangedToArticleName}
+            </Link>
+          ) : null}
+          {o.exchangedFromOrderId ? (
+            <Link
+              to={`/orders/${o.exchangedFromOrderId}/edit`}
+              className="block text-xs font-semibold text-black/45 hover:underline"
+            >
+              ← Umtausch von {o.exchangedFromArticleName}
+            </Link>
+          ) : null}
+        </div>
+      ),
+    },
     {
       key: 'quantity',
       header: 'Menge',
@@ -199,6 +228,15 @@ export function OrderListPage() {
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
+          {o.status === PICKED_UP_STATUS_NAME && !o.exchangedToOrderId ? (
+            <button
+              type="button"
+              onClick={() => setExchangingOrder(o)}
+              className="text-brand hover:underline"
+            >
+              Umtausch
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setPendingDelete({ kind: 'single', order: o })}
@@ -588,6 +626,15 @@ export function OrderListPage() {
         confirmLabel="Aktualisieren"
         onConfirm={() => void handleConfirmSyncArticleNames()}
         onCancel={() => setPendingArticleSync(null)}
+      />
+
+      <ExchangeOrderDialog
+        open={exchangingOrder !== null}
+        order={exchangingOrder}
+        articles={articles}
+        orderStatuses={allOrderStatuses}
+        onDone={() => setExchangingOrder(null)}
+        onCancel={() => setExchangingOrder(null)}
       />
     </div>
   )

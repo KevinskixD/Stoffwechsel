@@ -1,4 +1,4 @@
-export type OrderHistoryAction = 'created' | 'updated' | 'status_changed'
+export type OrderHistoryAction = 'created' | 'updated' | 'status_changed' | 'exchanged'
 
 export interface OrderHistoryChange {
   field: string

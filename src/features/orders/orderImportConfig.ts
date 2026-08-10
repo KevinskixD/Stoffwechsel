@@ -190,5 +190,9 @@ export const orderImportConfig: ImportEntityConfig<Order, OrderImportPrefetch> =
     statusId: data.statusId as string,
     status: data.status as string,
     orderDate: data.orderDate as string,
+    exchangedFromOrderId: '',
+    exchangedFromArticleName: '',
+    exchangedToOrderId: '',
+    exchangedToArticleName: '',
   }),
 }

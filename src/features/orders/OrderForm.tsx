@@ -24,6 +24,10 @@ interface FormState {
   statusId: string
   status: string
   orderDate: string
+  exchangedFromOrderId: string
+  exchangedFromArticleName: string
+  exchangedToOrderId: string
+  exchangedToArticleName: string
 }
 
 const emptyForm: FormState = {
@@ -38,6 +42,10 @@ const emptyForm: FormState = {
   statusId: '',
   status: '',
   orderDate: todayISO(),
+  exchangedFromOrderId: '',
+  exchangedFromArticleName: '',
+  exchangedToOrderId: '',
+  exchangedToArticleName: '',
 }
 
 export function OrderForm() {
@@ -61,6 +69,12 @@ export function OrderForm() {
   } | null>(null)
 
   useEffect(() => {
+    if (isEdit || form.statusId || statuses.length === 0) return
+    const defaultStatus = statuses.find((s) => s.name === 'Zu Bestellen') ?? statuses[0]
+    setForm((f) => ({ ...f, statusId: defaultStatus.id, status: defaultStatus.name }))
+  }, [isEdit, form.statusId, statuses])
+
+  useEffect(() => {
     if (!id) return
     getOrder(id).then((order) => {
       if (order) {
@@ -76,6 +90,10 @@ export function OrderForm() {
           statusId: order.statusId,
           status: order.status,
           orderDate: order.orderDate,
+          exchangedFromOrderId: order.exchangedFromOrderId ?? '',
+          exchangedFromArticleName: order.exchangedFromArticleName ?? '',
+          exchangedToOrderId: order.exchangedToOrderId ?? '',
+          exchangedToArticleName: order.exchangedToArticleName ?? '',
         })
         setOriginal({ articleId: order.articleId, quantity: order.quantity })
       }
@@ -170,6 +188,10 @@ export function OrderForm() {
       statusId: form.statusId,
       status: form.status,
       orderDate: form.orderDate,
+      exchangedFromOrderId: form.exchangedFromOrderId,
+      exchangedFromArticleName: form.exchangedFromArticleName,
+      exchangedToOrderId: form.exchangedToOrderId,
+      exchangedToArticleName: form.exchangedToArticleName,
     }
 
     const projected = projectedStock(quantity)

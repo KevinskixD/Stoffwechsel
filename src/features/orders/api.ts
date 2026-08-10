@@ -135,6 +135,89 @@ export async function getOrder(id: string): Promise<Order | null> {
   return snapshot.exists() ? snapshot.data() : null
 }
 
+export interface ExchangeOrderInput {
+  oldOrderId: string
+  newArticleId: string
+  newArticleName: string
+  newArticleNumber: string
+  newArticleSize: string
+  newPickupLocationName: string
+  newStatusId: string
+  newStatus: string
+  /** The resolved "Umtausch" OrderStatus to set on the old order. */
+  exchangeStatusId: string
+  exchangeStatusName: string
+}
+
+/**
+ * Marks a picked-up order as exchanged (status → "Umtausch", restocks its article) and creates
+ * a new, linked order for the replacement article (same employee/quantity, consumes its stock).
+ * Not wrapped in a transaction — same "sequential awaits" style as updateOrder's article-change
+ * inventory reconciliation.
+ */
+export async function exchangeOrder(input: ExchangeOrderInput): Promise<string> {
+  const before = await getOrder(input.oldOrderId)
+  if (!before) throw new Error('Bestellung nicht gefunden.')
+
+  const newOrderInput: OrderInput = {
+    employeeId: before.employeeId,
+    employeeName: before.employeeName,
+    articleId: input.newArticleId,
+    articleName: input.newArticleName,
+    articleNumber: input.newArticleNumber,
+    articleSize: input.newArticleSize,
+    pickupLocationName: input.newPickupLocationName,
+    quantity: before.quantity,
+    statusId: input.newStatusId,
+    status: input.newStatus,
+    orderDate: todayISO(),
+    exchangedFromOrderId: before.id,
+    exchangedFromArticleName: articleDisplayLabel(before),
+    exchangedToOrderId: '',
+    exchangedToArticleName: '',
+  }
+  const newDocRef = await addDoc(ordersCollection, {
+    ...newOrderInput,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  await adjustArticleInventory(newOrderInput.articleId, -newOrderInput.quantity)
+
+  const newArticleLabel = articleDisplayLabel(newOrderInput)
+  await updateDoc(doc(db, 'orders', input.oldOrderId), {
+    statusId: input.exchangeStatusId,
+    status: input.exchangeStatusName,
+    exchangedToOrderId: newDocRef.id,
+    exchangedToArticleName: newArticleLabel,
+    updatedAt: serverTimestamp(),
+  })
+  await adjustArticleInventory(before.articleId, before.quantity)
+
+  await logOrderHistory({
+    orderId: input.oldOrderId,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'exchanged',
+    changes: [
+      { field: 'status', label: 'Status', from: before.status, to: input.exchangeStatusName },
+      { field: 'exchangedToArticleName', label: 'Umgetauscht zu', from: '', to: newArticleLabel },
+    ],
+  })
+  await logOrderHistory({
+    orderId: newDocRef.id,
+    employeeName: before.employeeName,
+    articleName: newOrderInput.articleName,
+    action: 'exchanged',
+    changes: [
+      { field: 'quantity', label: 'Menge', from: '', to: String(newOrderInput.quantity) },
+      { field: 'status', label: 'Status', from: '', to: newOrderInput.status },
+      { field: 'exchangedFromArticleName', label: 'Umgetauscht von', from: '', to: articleDisplayLabel(before) },
+    ],
+  })
+
+  return newDocRef.id
+}
+
 export async function createOrder(input: OrderInput): Promise<void> {
   const docRef = await addDoc(ordersCollection, {
     ...input,

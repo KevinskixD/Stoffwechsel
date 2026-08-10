@@ -141,7 +141,9 @@ order-mutating function in `orders/api.ts` fetches its own "before" snapshot int
 path doesn't require touching call sites. A change is tagged `'status_changed'` only when the
 status is the *sole* changed field; otherwise it's `'updated'` with a per-field diff. Deletes and
 the denormalized-field resync helpers (`updateOrderEmployeeNames` etc.) are intentionally not
-logged — this log covers order content, not housekeeping.
+logged — this log covers order content, not housekeeping. `exchangeOrder` is the one exception to
+the field-count tagging rule: it always logs `'exchanged'` (never `'status_changed'`/`'updated'`),
+once on each of the two linked orders — see "Order-to-order exchange" below.
 
 ### Optional per-article inventory tracking
 
@@ -150,7 +152,8 @@ logged — this log covers order content, not housekeeping.
 off). The stock count only ever moves through `adjustArticleInventory` in `articles/api.ts` — a
 relative-delta helper built on Firestore's atomic `increment()` — called from every order-mutating
 function in `orders/api.ts` (`createOrder`, `updateOrder`, `updateOrderQuantity`, `deleteOrder`,
-`deleteOrders`) that touches `articleId`/`quantity`. Two things to know before touching this:
+`deleteOrders`, `exchangeOrder`) that touches `articleId`/`quantity`. Two things to know before
+touching this:
 - The Excel bulk order import (`shared/import`, `orderImportConfig.ts`) writes order docs directly
   and bypasses `orders/api.ts` entirely, so imported orders **do not** adjust inventory — a
   deliberate scope decision (see the comment in `orderImportConfig.ts`), not an oversight to fix.
@@ -158,6 +161,21 @@ function in `orders/api.ts` (`createOrder`, `updateOrder`, `updateOrderQuantity`
   `OrderListPage`'s inline quantity `EditableCell` both show a `ConfirmDialog` before committing a
   change that would push it below zero — bridged via a resolver held in local state, since
   `ConfirmDialog` is callback-based, not promise-based.
+
+### Order-to-order exchange (Umtausch)
+
+`exchangeOrder` (`src/features/orders/api.ts`) implements the "Umtausch" flow: a row action on
+`OrderListPage` (visible only when `status === 'Abgeholt'` and the order hasn't been exchanged
+already) opens `ExchangeOrderDialog.tsx`, which picks a replacement article and a status for the
+new order. `exchangeOrder` then creates that new order and marks the old one's status as
+`'Umtausch'`, linking the two both ways via `exchangedFromOrderId`/`exchangedToOrderId` (plus
+denormalized `exchangedFromArticleName`/`exchangedToArticleName` snapshots — fields on `Order` in
+`src/types/order.ts`). This is the **only order-to-order FK in the schema** — every other order
+relationship points at master data (`employeeId`/`articleId`/`statusId`), never at another order.
+Inventory moves in both directions in the same call: the old article is restocked, the new one is
+consumed. Because a full-form edit via `OrderForm` overwrites the entire `OrderInput`, the four
+exchange fields are loaded into and resubmitted from `FormState` unchanged (no UI exposes them) —
+editing an exchanged order must not silently drop the link.
 
 ### Import wizard
 
