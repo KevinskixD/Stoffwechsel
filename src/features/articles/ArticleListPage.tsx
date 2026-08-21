@@ -9,6 +9,7 @@ import { FilterField } from '../../shared/components/FilterField'
 import { FilterSelect } from '../../shared/components/FilterSelect'
 import { PageHeader, PrimaryLinkButton } from '../../shared/components/PageHeader'
 import { SearchInput } from '../../shared/components/SearchInput'
+import { useToast } from '../../shared/components/ToastProvider'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
 import { matchesSearch } from '../../shared/utils/search'
 import type { Article } from '../../types/article'
@@ -43,7 +44,7 @@ export function ArticleListPage() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [assigningPickupLocation, setAssigningPickupLocation] = useState(false)
   const [assigningDeductible, setAssigningDeductible] = useState(false)
-  const [backfillMessage, setBackfillMessage] = useState<string | null>(null)
+  const { showToast } = useToast()
   const { data: articles, loading } = useArticles(showInactive)
   const { data: pickupLocations } = usePickupLocations(false)
 
@@ -203,8 +204,7 @@ export function ArticleListPage() {
               type="button"
               onClick={async () => {
                 const { updated } = await backfillArticleSizes()
-                setBackfillMessage(`${updated} Artikel aktualisiert.`)
-                setTimeout(() => setBackfillMessage(null), 3000)
+                showToast(`${updated} Artikel aktualisiert.`, 'success')
               }}
               className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
             >
@@ -277,7 +277,6 @@ export function ArticleListPage() {
             </button>
           </>
         )}
-        {backfillMessage ? <span className="text-[13px] font-semibold text-brand">{backfillMessage}</span> : null}
         <span className="ml-auto text-xs font-semibold text-black/45">{filtered.length} Einträge</span>
       </div>
 

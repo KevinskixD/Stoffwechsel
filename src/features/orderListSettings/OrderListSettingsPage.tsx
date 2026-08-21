@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useToast } from '../../shared/components/ToastProvider'
 import type { OrderListSettings } from '../../types/orderListSettings'
 import { saveOrderListSettings } from './api'
 import { useOrderListSettings } from './hooks'
@@ -16,7 +17,7 @@ export function OrderListSettingsPage() {
   const { data: settings, loading } = useOrderListSettings()
   const [form, setForm] = useState(settings)
   const [initialized, setInitialized] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (loading || initialized) return
@@ -33,8 +34,7 @@ export function OrderListSettingsPage() {
       showArticleDataSync: form.showArticleDataSync,
       showGenerateBestellFile: form.showGenerateBestellFile,
     })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    showToast('Gespeichert.', 'success')
   }
 
   if (loading) return <p className="p-6 text-gray-400">Lädt…</p>
@@ -67,7 +67,6 @@ export function OrderListSettingsPage() {
           >
             Speichern
           </button>
-          {saved ? <span className="text-[13px] font-semibold text-brand">Gespeichert.</span> : null}
         </div>
       </div>
     </div>

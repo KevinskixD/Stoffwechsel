@@ -4,6 +4,7 @@ import { isFirebaseConfigured } from './firebase/config'
 import { ensureSeedData } from './firebase/seed'
 import { AppRoutes } from './routes/router'
 import { Sidebar } from './shared/components/Sidebar'
+import { ToastProvider } from './shared/components/ToastProvider'
 
 function App() {
   const [seeded, setSeeded] = useState(false)
@@ -37,15 +38,17 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-page text-gray-900">
-        <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="h-1 shrink-0 bg-brand" />
-          <main className="flex-1">
-            <AppRoutes />
-          </main>
+      <ToastProvider>
+        <div className="flex min-h-screen bg-page text-gray-900">
+          <Sidebar />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="h-1 shrink-0 bg-brand" />
+            <main className="flex-1">
+              <AppRoutes />
+            </main>
+          </div>
         </div>
-      </div>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

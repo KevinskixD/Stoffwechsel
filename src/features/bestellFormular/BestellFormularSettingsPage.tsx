@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs'
 import { useEffect, useState } from 'react'
 import { FormField, formInputClass } from '../../shared/components/FormField'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useToast } from '../../shared/components/ToastProvider'
 import { fileToBase64 } from '../../shared/utils/file'
 import { emptyTableMapping, type TableMapping } from '../../types/bestellFormularSettings'
 import { useOrderStatuses } from '../orderStatuses/hooks'
@@ -110,8 +111,8 @@ export function BestellFormularSettingsPage() {
   const [triggerStatusId, setTriggerStatusId] = useState('')
   const [targetStatusId, setTargetStatusId] = useState('')
   const [initialized, setInitialized] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [detectError, setDetectError] = useState('')
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (loading || initialized) return
@@ -164,8 +165,7 @@ export function BestellFormularSettingsPage() {
       triggerStatusId,
       targetStatusId,
     })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    showToast('Gespeichert.', 'success')
   }
 
   if (loading) return <p className="p-6 text-gray-400">Lädt…</p>
@@ -254,7 +254,6 @@ export function BestellFormularSettingsPage() {
           >
             Speichern
           </button>
-          {saved ? <span className="text-[13px] font-semibold text-brand">Gespeichert.</span> : null}
         </div>
       </div>
     </div>

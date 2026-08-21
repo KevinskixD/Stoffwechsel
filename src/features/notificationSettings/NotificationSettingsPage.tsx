@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FormField, formInputClass } from '../../shared/components/FormField'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useToast } from '../../shared/components/ToastProvider'
 import { renderNotificationText } from '../../shared/utils/notificationTemplate'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { saveNotificationSettings } from './api'
@@ -20,7 +21,7 @@ export function NotificationSettingsPage() {
   const [triggerStatusId, setTriggerStatusId] = useState(settings.triggerStatusId)
   const [targetStatusId, setTargetStatusId] = useState(settings.targetStatusId)
   const [initialized, setInitialized] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   // Once settings load, seed local editable state — and if trigger/target were never configured,
   // suggest statuses literally named "Abholbereit"/"Informiert" as a one-time convenience default
@@ -39,8 +40,7 @@ export function NotificationSettingsPage() {
 
   async function handleSave() {
     await saveNotificationSettings({ greetingTemplate, lineTemplate, triggerStatusId, targetStatusId })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    showToast('Gespeichert.', 'success')
   }
 
   if (loading) return <p className="p-6 text-gray-400">Lädt…</p>
@@ -112,7 +112,6 @@ export function NotificationSettingsPage() {
             >
               Speichern
             </button>
-            {saved ? <span className="text-[13px] font-semibold text-brand">Gespeichert.</span> : null}
           </div>
         </div>
 

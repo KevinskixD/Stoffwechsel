@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { FormField, formInputClass } from '../../shared/components/FormField'
 import { PageHeader } from '../../shared/components/PageHeader'
+import { useToast } from '../../shared/components/ToastProvider'
 import { formatDateDe } from '../../shared/utils/date'
 import type { ParsedDeliveryLine } from '../../types/lieferscheinCheck'
 import { useOrderStatuses } from '../orderStatuses/hooks'
@@ -17,6 +18,7 @@ function blankLine(pos: number): ParsedDeliveryLine {
 
 export function LieferscheinCheckPage() {
   const { data: statuses } = useOrderStatuses(true)
+  const { showToast } = useToast()
 
   const [parsing, setParsing] = useState(false)
   const [parseError, setParseError] = useState('')
@@ -33,7 +35,6 @@ export function LieferscheinCheckPage() {
   const [matchResult, setMatchResult] = useState<LineMatchResult[] | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [committing, setCommitting] = useState(false)
-  const [resultMessage, setResultMessage] = useState('')
   const [matchError, setMatchError] = useState('')
 
   // Suggest statuses literally named "Bestellt"/"Abholbereit" as a one-time convenience default,
@@ -51,7 +52,6 @@ export function LieferscheinCheckPage() {
   function resetAfterUpload() {
     setDuplicateWarning('')
     setMatchResult(null)
-    setResultMessage('')
     setMatchError('')
   }
 
@@ -90,7 +90,6 @@ export function LieferscheinCheckPage() {
 
   async function handleAbgleichenClick(skipDuplicateCheck: boolean) {
     if (!lines || !sourceStatus || !targetStatus) return
-    setResultMessage('')
     setMatchError('')
 
     try {
@@ -135,9 +134,10 @@ export function LieferscheinCheckPage() {
       })
 
       setConfirmOpen(false)
-      setResultMessage(
+      showToast(
         `${matchedOrderIds.length} Bestellung(en) auf "${targetStatus.name}" gesetzt` +
           (unmatchedArticleNumbers.length > 0 ? `, ${unmatchedArticleNumbers.length} Zeile(n) nicht vollständig zugeordnet.` : '.'),
+        'success',
       )
     } catch (err) {
       setMatchError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
@@ -340,8 +340,6 @@ export function LieferscheinCheckPage() {
           </button>
         </div>
       )}
-
-      {resultMessage && <p className="text-[13px] font-semibold text-black/60">{resultMessage}</p>}
 
       <ConfirmDialog
         open={confirmOpen}

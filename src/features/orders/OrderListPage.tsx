@@ -10,6 +10,7 @@ import { FilterSelect } from '../../shared/components/FilterSelect'
 import { PageHeader, PrimaryLinkButton } from '../../shared/components/PageHeader'
 import { Pagination } from '../../shared/components/Pagination'
 import { SearchInput } from '../../shared/components/SearchInput'
+import { useToast } from '../../shared/components/ToastProvider'
 import { useDebounce } from '../../shared/hooks/useDebounce'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
 import { formatDateDe } from '../../shared/utils/date'
@@ -48,6 +49,7 @@ const PICKED_UP_STATUS_NAME = 'Abgeholt'
 type PendingDelete = { kind: 'single'; order: Order } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
 
 export function OrderListPage() {
+  const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const status = searchParams.get('status') ?? ''
   function setStatus(value: string) {
@@ -72,17 +74,13 @@ export function OrderListPage() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [bestellConfirmOrders, setBestellConfirmOrders] = useState<Order[] | null>(null)
   const [bestellBusy, setBestellBusy] = useState(false)
-  const [bestellMessage, setBestellMessage] = useState('')
   const [pendingNameSync, setPendingNameSync] = useState<{ id: string; employeeName: string }[] | null>(null)
-  const [nameSyncMessage, setNameSyncMessage] = useState('')
   const [pendingPickupLocationSync, setPendingPickupLocationSync] = useState<
     { id: string; pickupLocationName: string }[] | null
   >(null)
-  const [pickupLocationSyncMessage, setPickupLocationSyncMessage] = useState('')
   const [pendingArticleSync, setPendingArticleSync] = useState<
     { id: string; articleName: string; articleNumber: string }[] | null
   >(null)
-  const [articleSyncMessage, setArticleSyncMessage] = useState('')
   const [pendingQuantityConfirm, setPendingQuantityConfirm] = useState<{
     order: Order
     quantity: number
@@ -263,13 +261,12 @@ export function OrderListPage() {
   }
 
   async function handleGenerateBestelldateiClick() {
-    setBestellMessage('')
     if (!bestellSettings.templateBase64) {
-      setBestellMessage('Keine Vorlage konfiguriert. Siehe Einstellungen → Bestellformular.')
+      showToast('Keine Vorlage konfiguriert. Siehe Einstellungen → Bestellformular.', 'error')
       return
     }
     if (!bestellTriggerStatus) {
-      setBestellMessage('Kein auslösender Status konfiguriert. Siehe Einstellungen → Bestellformular.')
+      showToast('Kein auslösender Status konfiguriert. Siehe Einstellungen → Bestellformular.', 'error')
       return
     }
     setBestellBusy(true)
@@ -277,7 +274,7 @@ export function OrderListPage() {
     setBestellBusy(false)
     const matchingOrders = snapshot.docs.map((d) => d.data())
     if (matchingOrders.length === 0) {
-      setBestellMessage(`Keine Bestellungen mit Status "${bestellTriggerStatus.name}" gefunden.`)
+      showToast(`Keine Bestellungen mit Status "${bestellTriggerStatus.name}" gefunden.`, 'info')
       return
     }
     setBestellConfirmOrders(matchingOrders)
@@ -292,14 +289,14 @@ export function OrderListPage() {
     }
     setBestellBusy(false)
     setBestellConfirmOrders(null)
-    setBestellMessage(
+    showToast(
       `${result.fileCount} Datei(en) erzeugt, ${result.includedOrderIds.length} Bestellung(en)` +
         (bestellTargetStatus ? ` auf "${bestellTargetStatus.name}" gesetzt.` : '.'),
+      'success',
     )
   }
 
   function handleSyncEmployeeNamesClick() {
-    setNameSyncMessage('')
     const employeeById = new Map(employees.map((e) => [e.id, e]))
     const mismatches = rawOrders
       .map((o) => {
@@ -311,7 +308,7 @@ export function OrderListPage() {
       .filter((x): x is { id: string; employeeName: string } => x !== null)
 
     if (mismatches.length === 0) {
-      setNameSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Mitarbeiternamen synchron.')
+      showToast('Alle geladenen Bestellungen sind mit den aktuellen Mitarbeiternamen synchron.', 'info')
       return
     }
     setPendingNameSync(mismatches)
@@ -320,12 +317,11 @@ export function OrderListPage() {
   async function handleConfirmSyncEmployeeNames() {
     if (!pendingNameSync) return
     await updateOrderEmployeeNames(pendingNameSync)
-    setNameSyncMessage(`${pendingNameSync.length} Bestellung(en) aktualisiert.`)
+    showToast(`${pendingNameSync.length} Bestellung(en) aktualisiert.`, 'success')
     setPendingNameSync(null)
   }
 
   function handleSyncPickupLocationsClick() {
-    setPickupLocationSyncMessage('')
     const articleById = new Map(articles.map((a) => [a.id, a]))
     const mismatches = rawOrders
       .map((o) => {
@@ -338,7 +334,7 @@ export function OrderListPage() {
       .filter((x): x is { id: string; pickupLocationName: string } => x !== null)
 
     if (mismatches.length === 0) {
-      setPickupLocationSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Abholorten synchron.')
+      showToast('Alle geladenen Bestellungen sind mit den aktuellen Abholorten synchron.', 'info')
       return
     }
     setPendingPickupLocationSync(mismatches)
@@ -347,12 +343,11 @@ export function OrderListPage() {
   async function handleConfirmSyncPickupLocations() {
     if (!pendingPickupLocationSync) return
     await updateOrderPickupLocationNames(pendingPickupLocationSync)
-    setPickupLocationSyncMessage(`${pendingPickupLocationSync.length} Bestellung(en) aktualisiert.`)
+    showToast(`${pendingPickupLocationSync.length} Bestellung(en) aktualisiert.`, 'success')
     setPendingPickupLocationSync(null)
   }
 
   function handleSyncArticleNamesClick() {
-    setArticleSyncMessage('')
     const articleById = new Map(articles.map((a) => [a.id, a]))
     const mismatches = rawOrders
       .map((o) => {
@@ -365,7 +360,7 @@ export function OrderListPage() {
       .filter((x): x is { id: string; articleName: string; articleNumber: string } => x !== null)
 
     if (mismatches.length === 0) {
-      setArticleSyncMessage('Alle geladenen Bestellungen sind mit den aktuellen Artikeldaten synchron.')
+      showToast('Alle geladenen Bestellungen sind mit den aktuellen Artikeldaten synchron.', 'info')
       return
     }
     setPendingArticleSync(mismatches)
@@ -374,7 +369,7 @@ export function OrderListPage() {
   async function handleConfirmSyncArticleNames() {
     if (!pendingArticleSync) return
     await updateOrderArticleNames(pendingArticleSync)
-    setArticleSyncMessage(`${pendingArticleSync.length} Bestellung(en) aktualisiert.`)
+    showToast(`${pendingArticleSync.length} Bestellung(en) aktualisiert.`, 'success')
     setPendingArticleSync(null)
   }
 
@@ -450,13 +445,6 @@ export function OrderListPage() {
           </>
         }
       />
-
-      {bestellMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{bestellMessage}</p> : null}
-      {nameSyncMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{nameSyncMessage}</p> : null}
-      {pickupLocationSyncMessage ? (
-        <p className="mb-4 text-[13px] font-semibold text-black/60">{pickupLocationSyncMessage}</p>
-      ) : null}
-      {articleSyncMessage ? <p className="mb-4 text-[13px] font-semibold text-black/60">{articleSyncMessage}</p> : null}
 
       <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <FilterSelect label="Mitarbeiter" value={employeeId} onChange={setEmployeeId}>
