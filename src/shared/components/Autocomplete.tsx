@@ -60,7 +60,7 @@ export function Autocomplete<T>({ options, value, onChange, placeholder = 'AuswÃ
         className="w-full rounded-lg border border-black/[0.14] px-3 py-2 text-[13.5px] focus:border-brand focus:outline-none"
       />
       {open && filtered.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-black/[0.08] bg-white shadow-lg">
+        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-black/[0.08] bg-surface shadow-lg">
           {filtered.map((option) => (
             <li
               key={option.value}

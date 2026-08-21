@@ -161,7 +161,7 @@ export function LieferscheinCheckPage() {
         subtitle="Lieferschein hochladen und automatisch die passenden Bestellungen auf abholbereit setzen"
       />
 
-      <div className="mb-6 rounded-xl border border-black/[0.08] bg-white p-5">
+      <div className="mb-6 rounded-xl border border-black/[0.08] bg-surface p-5">
         <FormField label="Lieferschein-PDF">
           <input
             type="file"
@@ -175,7 +175,7 @@ export function LieferscheinCheckPage() {
       </div>
 
       {lines && (
-        <div className="mb-6 rounded-xl border border-black/[0.08] bg-white p-5">
+        <div className="mb-6 rounded-xl border border-black/[0.08] bg-surface p-5">
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Lieferschein-Nummer">
               <input
@@ -301,7 +301,7 @@ export function LieferscheinCheckPage() {
       )}
 
       {matchResult && (
-        <div className="mb-6 rounded-xl border border-black/[0.08] bg-white p-5">
+        <div className="mb-6 rounded-xl border border-black/[0.08] bg-surface p-5">
           <h2 className="mb-3 text-[15px] font-extrabold text-gray-900">Abgleich-Vorschau</h2>
           <div className="space-y-4">
             {matchResult.map((r, index) => (

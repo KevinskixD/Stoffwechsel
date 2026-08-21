@@ -22,7 +22,7 @@ export function PreviewStep<T, P>({ config, rows, onBack, onConfirm }: PreviewSt
         {Math.min(PREVIEW_COUNT, rows.length)} Zeilen angezeigt.
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-black/[0.08] bg-white">
+      <div className="overflow-x-auto rounded-xl border border-black/[0.08] bg-surface">
         <table className="min-w-full text-sm">
           <thead className="border-b border-black/[0.08] bg-page">
             <tr>

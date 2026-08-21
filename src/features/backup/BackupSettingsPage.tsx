@@ -94,7 +94,7 @@ export function BackupSettingsPage() {
       />
 
       <div className="max-w-[560px] space-y-6">
-        <section className="rounded-xl border border-black/[0.08] bg-white p-5">
+        <section className="rounded-xl border border-black/[0.08] bg-surface p-5">
           <h2 className="text-[15px] font-extrabold text-gray-900">Backup exportieren</h2>
           <p className="mt-1 text-[13px] text-black/55">
             Lädt eine einzelne Datei mit sämtlichen Mitarbeitern, Artikeln, Bestellungen, Einstellungen und Verlaufsdaten
@@ -117,7 +117,7 @@ export function BackupSettingsPage() {
           ) : null}
         </section>
 
-        <section className="rounded-xl border border-black/[0.08] bg-white p-5">
+        <section className="rounded-xl border border-black/[0.08] bg-surface p-5">
           <h2 className="text-[15px] font-extrabold text-gray-900">Backup wiederherstellen</h2>
           <p className="mt-1 text-[13px] text-black/55">
             Ersetzt <span className="font-semibold text-red-600">alle</span> aktuellen Daten vollständig durch den Inhalt

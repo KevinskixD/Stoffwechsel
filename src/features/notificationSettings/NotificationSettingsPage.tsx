@@ -118,7 +118,7 @@ export function NotificationSettingsPage() {
 
         <div>
           <label className="mb-1.5 block text-xs font-bold text-black/55">Vorschau (Beispieldaten)</label>
-          <pre className="whitespace-pre-wrap rounded-lg border border-black/[0.14] bg-white p-4 text-[13.5px] text-gray-900">
+          <pre className="whitespace-pre-wrap rounded-lg border border-black/[0.14] bg-surface p-4 text-[13.5px] text-gray-900">
             {previewText}
           </pre>
         </div>

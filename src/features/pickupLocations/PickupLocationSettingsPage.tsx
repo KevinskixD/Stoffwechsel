@@ -150,7 +150,7 @@ export function PickupLocationSettingsPage() {
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : (
-        <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-white">
+        <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-surface">
           {locations.map((location) => (
             <li
               key={location.id}

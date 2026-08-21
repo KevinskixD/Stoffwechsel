@@ -57,7 +57,7 @@ export function DataTable<T>({
   isRowSelected,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-black/[0.08] bg-white">
+    <div className="overflow-x-auto rounded-xl border border-black/[0.08] bg-surface">
       <table className="min-w-full text-sm">
         <thead className="border-b border-black/[0.08] bg-page">
           <tr>
@@ -90,7 +90,7 @@ export function DataTable<T>({
               return (
                 <Fragment key={key}>
                   <tr
-                    className={`border-b border-black/[0.06] last:border-0 hover:bg-[#FBFAF9] ${
+                    className={`border-b border-black/[0.06] last:border-0 hover:bg-[#FBFAF9] dark:hover:bg-white/[0.04] ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${selected ? 'bg-brand/5' : ''}`}
                     onClick={

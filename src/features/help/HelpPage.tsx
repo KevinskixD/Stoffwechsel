@@ -2,7 +2,7 @@ export function HelpPage() {
   return (
     <div className="mx-auto max-w-2xl p-6">
       <h1 className="mb-4 text-xl font-semibold text-gray-900">Hilfe</h1>
-      <div className="space-y-4 rounded-xl border border-black/[0.08] bg-white p-6 text-sm text-gray-700">
+      <div className="space-y-4 rounded-xl border border-black/[0.08] bg-surface p-6 text-sm text-gray-700">
         <p>
           <strong>Mitarbeiter</strong> und <strong>Artikel</strong> sind die Stammdaten der App — sie werden im
           Bestellformular per Dropdown ausgewählt, damit keine Tippfehler entstehen. Ein Eintrag kann deaktiviert

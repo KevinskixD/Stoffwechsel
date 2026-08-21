@@ -16,9 +16,9 @@ export function AssignDeductibleDialog({ open, count, onConfirm, onCancel }: Ass
   const valid = !hasDeductible || deductibleAmount > 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.45)]" onClick={onCancel}>
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+        className="w-full max-w-sm rounded-2xl bg-surface p-7 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-[17px] font-extrabold text-gray-900">Selbstbehalt anpassen</h2>

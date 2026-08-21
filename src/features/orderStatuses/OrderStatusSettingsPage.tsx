@@ -151,7 +151,7 @@ export function OrderStatusSettingsPage() {
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : (
-        <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-white">
+        <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-surface">
           {statuses.map((status) => (
             <li
               key={status.id}

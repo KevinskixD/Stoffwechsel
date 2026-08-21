@@ -21,7 +21,7 @@ const ACTION_LABELS: Record<OrderHistoryAction, string> = {
 const ACTION_COLORS: Record<OrderHistoryAction, { bg: string; fg: string }> = {
   created: { bg: 'var(--color-badge-green-bg)', fg: 'var(--color-badge-green-fg)' },
   status_changed: { bg: 'var(--color-badge-amber-bg)', fg: 'var(--color-badge-amber-fg)' },
-  updated: { bg: 'rgba(0,0,0,0.06)', fg: 'rgba(0,0,0,0.5)' },
+  updated: { bg: 'var(--color-badge-neutral-bg)', fg: 'var(--color-badge-neutral-fg)' },
   exchanged: { bg: 'var(--color-badge-red-bg)', fg: 'var(--color-badge-red-fg)' },
 }
 
@@ -82,13 +82,13 @@ export function OrderHistoryPage() {
       {loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : filtered.length === 0 ? (
-        <p className="rounded-lg border border-black/[0.08] bg-white p-4 text-[13.5px] text-black/55">
+        <p className="rounded-lg border border-black/[0.08] bg-surface p-4 text-[13.5px] text-black/55">
           Keine Einträge vorhanden.
         </p>
       ) : (
         <div className="space-y-2.5">
           {filtered.map((entry) => (
-            <div key={entry.id} className="rounded-xl border border-black/[0.08] bg-white p-4">
+            <div key={entry.id} className="rounded-xl border border-black/[0.08] bg-surface p-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <ActionBadge action={entry.action} />

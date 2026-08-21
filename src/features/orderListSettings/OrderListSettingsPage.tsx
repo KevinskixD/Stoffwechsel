@@ -48,7 +48,7 @@ export function OrderListSettingsPage() {
 
       <div className="max-w-[420px] space-y-3">
         {BUTTONS.map(({ key, label }) => (
-          <label key={key} className="flex items-center gap-3 rounded-lg border border-black/[0.12] bg-white px-4 py-3">
+          <label key={key} className="flex items-center gap-3 rounded-lg border border-black/[0.12] bg-surface px-4 py-3">
             <input
               type="checkbox"
               checked={form[key]}

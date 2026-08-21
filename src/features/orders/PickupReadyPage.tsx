@@ -55,7 +55,7 @@ export function PickupReadyPage() {
       <PageHeader title="Abholbereit" subtitle="Offene Abholungen pro Mitarbeiter, gruppiert nach Person" />
 
       {!settingsLoading && !settings.triggerStatusId ? (
-        <p className="rounded-lg border border-black/[0.08] bg-white p-4 text-[13.5px] text-black/55">
+        <p className="rounded-lg border border-black/[0.08] bg-surface p-4 text-[13.5px] text-black/55">
           Kein Auslöse-Status konfiguriert.{' '}
           <Link to="/settings/notifications" className="font-semibold text-brand hover:underline">
             In den Einstellungen festlegen
@@ -65,13 +65,13 @@ export function PickupReadyPage() {
       ) : loading ? (
         <p className="text-gray-400">Lädt…</p>
       ) : groups.length === 0 ? (
-        <p className="rounded-lg border border-black/[0.08] bg-white p-4 text-[13.5px] text-black/55">
+        <p className="rounded-lg border border-black/[0.08] bg-surface p-4 text-[13.5px] text-black/55">
           Aktuell keine offenen Abholungen.
         </p>
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
-            <div key={group.employeeId} className="rounded-xl border border-black/[0.08] bg-white p-5">
+            <div key={group.employeeId} className="rounded-xl border border-black/[0.08] bg-surface p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[15px] font-extrabold text-gray-900">{group.employeeName}</h2>
                 <button

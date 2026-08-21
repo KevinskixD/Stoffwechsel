@@ -212,3 +212,33 @@ operator of this tool — but re-evaluate if that trust boundary ever changes.
 writes into the fixed Bestellformular template (`features/bestellFormular/generate.ts`),
 preserving the template's existing cell formatting/merges while only touching specific mapped
 cells — not interchangeable with `xlsx` for that job.
+
+### Theming (light/dark mode)
+
+Tailwind v4's CSS-based config (`src/index.css`, no `tailwind.config.js`) exposes the whole
+default palette as overridable CSS variables, and opacity-modified utilities (`text-black/45`,
+`border-black/[0.08]`) compile to `color-mix(in oklab, var(--color-black) ..%, transparent)` —
+i.e. they reference the variable, not a baked-in value. Dark mode is implemented by overriding
+`--color-black`/`--color-gray-*`/`--color-red-*`/`--color-amber-*`/the badge-color vars inside a
+`.dark { }` block in `src/index.css` (activated via `@custom-variant dark (&:where(.dark, .dark
+*))` and a class toggled on `<html>`) — this re-colors essentially every existing utility class
+across the whole app with **no per-component edits**, rather than retrofitting `dark:` variants
+file-by-file.
+
+**The one collision to know about:** `--color-white` is used both for card/panel backgrounds
+(`bg-white`) and for text/dividers on the red `bg-brand` buttons (`text-white`, `border-white/20`)
+that must stay white in *both* themes — so `--color-white` itself is never overridden. Instead
+there's a separate `--color-surface` token for panel backgrounds. **Any new white card/panel
+background must use `bg-surface`, not `bg-white`** — `bg-white` will not adapt to dark mode.
+`bg-black/45` modal scrims are the mirror-image exception (kept as literal
+`bg-[rgba(0,0,0,0.45)]`, deliberately not inverting).
+
+Preference (`'light' | 'dark' | 'system'`) lives in `src/shared/hooks/useTheme.ts`, persisted to
+`localStorage` under `uniformverwaltung.theme`, toggled via a click-to-cycle button at the bottom
+of `Sidebar.tsx`. A blocking inline `<script>` in `index.html`'s `<head>` reads the same key before
+React mounts to avoid a flash of the wrong theme.
+
+`shared/utils/statusColors.ts`'s custom-hex order-status badges (`status.color` set via the
+color-picker) are a deliberate exception: they're literal hex values from Firestore, bypass the
+token system entirely, and are intentionally left as fixed "light chips" in both themes — don't
+try to make these theme-aware.

@@ -29,7 +29,7 @@ function legacyStatusColor(name: string): StatusColor {
   if (RED_STATUSES.has(key)) return { bg: 'var(--color-badge-red-bg)', fg: 'var(--color-badge-red-fg)' }
   if (AMBER_STATUSES.has(key)) return { bg: 'var(--color-badge-amber-bg)', fg: 'var(--color-badge-amber-fg)' }
   if (GREEN_STATUSES.has(key)) return { bg: 'var(--color-badge-green-bg)', fg: 'var(--color-badge-green-fg)' }
-  return { bg: 'rgba(0,0,0,0.06)', fg: 'rgba(0,0,0,0.5)' }
+  return { bg: 'var(--color-badge-neutral-bg)', fg: 'var(--color-badge-neutral-fg)' }
 }
 
 /** Picks black or white text for readable contrast against an arbitrary hex background. */

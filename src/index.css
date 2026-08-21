@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand: #b70e0c;
   --color-brand-dark: #8a0a0a;
@@ -11,10 +13,53 @@
   --color-badge-amber-fg: #946200;
   --color-badge-green-bg: #e7f5ec;
   --color-badge-green-fg: #1f7a3d;
+  --color-badge-neutral-bg: rgba(0, 0, 0, 0.06);
+  --color-badge-neutral-fg: rgba(0, 0, 0, 0.5);
 
   --color-page: #fafafa;
+  --color-surface: #ffffff;
 }
 
 body {
   background: var(--color-page);
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-page: #17181a;
+  --color-surface: #212327;
+
+  --color-black: #f2f0ee;
+
+  --color-gray-900: #ece9e5;
+  --color-gray-700: #cbd0d6;
+  --color-gray-600: #b3b9c1;
+  --color-gray-500: #98a0a8;
+  --color-gray-400: #90969f;
+
+  --color-red-600: #f2645f;
+  --color-red-700: #f68481;
+  --color-red-300: #7d3230;
+  --color-red-50: #3a1616;
+
+  --color-amber-800: #f0c869;
+  --color-amber-700: #e8b64f;
+  --color-amber-300: #8a6a2c;
+  --color-amber-50: #382b10;
+
+  --color-brand-tint: #331716;
+
+  --color-badge-red-bg: #3a1616;
+  --color-badge-red-fg: #f2827e;
+  --color-badge-amber-bg: #382b10;
+  --color-badge-amber-fg: #e8b64f;
+  --color-badge-green-bg: #123a22;
+  --color-badge-green-fg: #58d18a;
+  --color-badge-neutral-bg: rgba(255, 255, 255, 0.08);
+  --color-badge-neutral-fg: rgba(255, 255, 255, 0.6);
 }

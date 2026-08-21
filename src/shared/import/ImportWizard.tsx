@@ -32,7 +32,7 @@ export function ImportWizard<T, P>({ config }: ImportWizardProps<T, P>) {
 
   return (
     <div className="px-11 pt-9 pb-15">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-black/[0.08] bg-white p-7">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-black/[0.08] bg-surface p-7">
         <h1 className="mb-4 text-[17px] font-extrabold text-gray-900">{config.entityLabel} importieren</h1>
 
         {step === 'upload' && (

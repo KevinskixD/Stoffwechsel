@@ -61,7 +61,7 @@ export function CommitStep<T, P>({ config, rows, onDone }: CommitStepProps<T, P>
           {failedRows.length > 0 && (
             <div className="mt-4">
               <p className="mb-2 text-[13.5px] text-red-600">{failedRows.length} Zeilen wurden übersprungen:</p>
-              <ul className="max-h-64 overflow-auto rounded-lg border border-black/[0.08] bg-white text-xs">
+              <ul className="max-h-64 overflow-auto rounded-lg border border-black/[0.08] bg-surface text-xs">
                 {failedRows.map((r) => (
                   <li key={r.rowIndex} className="border-b border-black/[0.06] px-3 py-1.5 last:border-0">
                     Zeile {r.rowIndex + 2}: {r.errors.join(' ')}

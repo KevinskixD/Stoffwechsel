@@ -96,7 +96,7 @@ export function ByEmployeeReportPage() {
           renderExpandedRow={(r) => (
             <div>
               <h2 className="mb-2 text-sm font-extrabold text-gray-900">Bestellhistorie: {r.employeeName}</h2>
-              <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-white text-[13.5px]">
+              <ul className="divide-y divide-black/[0.06] rounded-xl border border-black/[0.08] bg-surface text-[13.5px]">
                 {r.orders
                   .slice()
                   .sort((a, b) => b.orderDate.localeCompare(a.orderDate))

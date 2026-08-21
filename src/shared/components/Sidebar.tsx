@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../assets/oerk-logo.png'
+import { useTheme, type ThemePreference } from '../hooks/useTheme'
 import {
   ArticleIcon,
   ChevronDownIcon,
@@ -10,10 +11,16 @@ import {
   GearIcon,
   HelpIcon,
   HistoryIcon,
+  MonitorIcon,
+  MoonIcon,
   OrdersIcon,
   PersonIcon,
   ReportsIcon,
+  SunIcon,
 } from './icons'
+
+const THEME_LABEL: Record<ThemePreference, string> = { light: 'Hell', dark: 'Dunkel', system: 'System' }
+const THEME_ICON: Record<ThemePreference, ComponentType> = { light: SunIcon, dark: MoonIcon, system: MonitorIcon }
 
 interface NavItemDef {
   to: string
@@ -130,9 +137,11 @@ export function Sidebar() {
   const { pathname } = useLocation()
   const settingsActive = isSettingsPath(pathname)
   const [settingsOpen, setSettingsOpen] = useState(settingsActive)
+  const { preference, cycle } = useTheme()
+  const ThemeIcon = THEME_ICON[preference]
 
   return (
-    <div className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-black/[0.08] bg-white">
+    <div className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-black/[0.08] bg-surface">
       <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 pt-[22px] pb-[18px]">
         <img src={logo} alt="ÖRK Logo" className="h-12 w-12 shrink-0 object-contain" />
         <div className="flex flex-col leading-tight">
@@ -179,6 +188,17 @@ export function Sidebar() {
             ))}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={cycle}
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-brand-tint"
+        >
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-black/55">
+            <ThemeIcon />
+          </span>
+          {THEME_LABEL[preference]}
+        </button>
       </div>
     </div>
   )

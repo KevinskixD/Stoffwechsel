@@ -68,7 +68,7 @@ export function DashboardPage() {
         <>
           <div className="mb-8 grid grid-cols-4 gap-4">
             {kpis.map((kpi) => (
-              <div key={kpi.label} className="flex flex-col gap-2 rounded-xl border border-black/[0.08] bg-white p-5">
+              <div key={kpi.label} className="flex flex-col gap-2 rounded-xl border border-black/[0.08] bg-surface p-5">
                 <span className="text-xs font-bold uppercase tracking-wide text-black/45">{kpi.label}</span>
                 <span className="text-3xl font-extrabold text-gray-900">{kpi.value}</span>
                 <span className="text-xs font-semibold" style={{ color: kpi.deltaColor }}>
@@ -79,7 +79,7 @@ export function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-[1.4fr_1fr] gap-5">
-            <div className="rounded-xl border border-black/[0.08] bg-white p-6">
+            <div className="rounded-xl border border-black/[0.08] bg-surface p-6">
               <h3 className="mb-4 text-base font-extrabold text-gray-900">Letzte Bestellungen</h3>
               {recentOrders.length === 0 ? (
                 <p className="text-sm text-black/40">Noch keine Bestellungen.</p>
