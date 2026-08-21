@@ -12,6 +12,7 @@ import type { OrderHistoryEntry } from '../../types/orderHistory'
 import { ORDER_LIST_SETTINGS_DOC_ID, type OrderListSettings } from '../../types/orderListSettings'
 import type { OrderStatus } from '../../types/orderStatus'
 import type { PickupLocation } from '../../types/pickupLocation'
+import type { StarterKitCategory } from '../../types/starterKit'
 
 const BATCH_SIZE = 500
 
@@ -39,7 +40,7 @@ async function fetchSingleton<T>(collectionName: string, docId: string): Promise
 }
 
 export async function exportBackupData(): Promise<BackupData> {
-  const [employees, articles, orderStatuses, orders, orderHistory, pickupLocations, lieferscheinChecks] =
+  const [employees, articles, orderStatuses, orders, orderHistory, pickupLocations, lieferscheinChecks, starterKitCategories] =
     await Promise.all([
       fetchCollection<Employee>('employees'),
       fetchCollection<Article>('articles'),
@@ -48,6 +49,7 @@ export async function exportBackupData(): Promise<BackupData> {
       fetchCollection<OrderHistoryEntry>('orderHistory'),
       fetchCollection<PickupLocation>('pickupLocations'),
       fetchCollection<LieferscheinCheckRecord>('lieferscheinChecks'),
+      fetchCollection<StarterKitCategory>('starterKitCategories'),
     ])
   const [notificationSettings, bestellFormularSettings, orderListSettings] = await Promise.all([
     fetchSingleton<NotificationSettings>('notificationSettings', NOTIFICATION_SETTINGS_DOC_ID),
@@ -58,7 +60,16 @@ export async function exportBackupData(): Promise<BackupData> {
   return {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
-    collections: { employees, articles, orderStatuses, orders, orderHistory, pickupLocations, lieferscheinChecks },
+    collections: {
+      employees,
+      articles,
+      orderStatuses,
+      orders,
+      orderHistory,
+      pickupLocations,
+      lieferscheinChecks,
+      starterKitCategories,
+    },
     singletons: { notificationSettings, bestellFormularSettings, orderListSettings },
   }
 }
@@ -134,6 +145,7 @@ export const BACKUP_RESTORE_STEP_LABELS = [
   'Bestellungen',
   'Bestellverlauf',
   'Abholorte',
+  'Basisausrüstung-Kategorien',
   'Lieferschein-Prüfungen',
   'Benachrichtigungseinstellungen',
   'Bestellformular-Einstellungen',
@@ -153,6 +165,7 @@ export async function restoreBackupData(data: BackupData, onProgress?: (label: s
     () => restoreCollection('orders', data.collections.orders),
     () => restoreCollection('orderHistory', data.collections.orderHistory),
     () => restoreCollection('pickupLocations', data.collections.pickupLocations),
+    () => restoreCollection('starterKitCategories', data.collections.starterKitCategories),
     () => restoreCollection('lieferscheinChecks', data.collections.lieferscheinChecks),
     () => restoreSingleton('notificationSettings', NOTIFICATION_SETTINGS_DOC_ID, data.singletons.notificationSettings),
     () =>

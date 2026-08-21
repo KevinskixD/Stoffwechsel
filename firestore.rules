@@ -28,6 +28,9 @@ service cloud.firestore {
     match /pickupLocations/{id} {
       allow read, write: if true;
     }
+    match /starterKitCategories/{id} {
+      allow read, write: if true;
+    }
     match /notificationSettings/{id} {
       allow read, write: if true;
     }

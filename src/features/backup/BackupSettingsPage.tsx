@@ -13,6 +13,7 @@ const SUMMARY_LABELS: { key: keyof BackupSummary; label: string }[] = [
   { key: 'orderHistory', label: 'Verlaufseinträge' },
   { key: 'pickupLocations', label: 'Abholorte' },
   { key: 'lieferscheinChecks', label: 'Lieferschein-Prüfungen' },
+  { key: 'starterKitCategories', label: 'Basisausrüstung-Kategorien' },
 ]
 
 function SummaryList({ summary }: { summary: BackupSummary }) {

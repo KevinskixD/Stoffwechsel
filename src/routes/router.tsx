@@ -22,6 +22,8 @@ import { PickupLocationSettingsPage } from '../features/pickupLocations/PickupLo
 import { ByArticleReportPage } from '../features/reports/ByArticleReportPage'
 import { ByDateRangeReportPage } from '../features/reports/ByDateRangeReportPage'
 import { ByEmployeeReportPage } from '../features/reports/ByEmployeeReportPage'
+import { StarterKitOrderForm } from '../features/starterKit/StarterKitOrderForm'
+import { StarterKitSettingsPage } from '../features/starterKit/StarterKitSettingsPage'
 import { ImportWizard } from '../shared/import/ImportWizard'
 
 function Placeholder({ label }: { label: string }) {
@@ -39,6 +41,7 @@ export function AppRoutes() {
       <Route path="/orders/lieferschein-check" element={<LieferscheinCheckPage />} />
       <Route path="/orders/history" element={<OrderHistoryPage />} />
       <Route path="/orders/new" element={<OrderForm />} />
+      <Route path="/orders/starter-kit" element={<StarterKitOrderForm />} />
       <Route path="/orders/:id/edit" element={<OrderForm />} />
       <Route path="/orders/import" element={<ImportWizard config={orderImportConfig} />} />
 
@@ -58,6 +61,7 @@ export function AppRoutes() {
 
       <Route path="/settings/order-statuses" element={<OrderStatusSettingsPage />} />
       <Route path="/settings/pickup-locations" element={<PickupLocationSettingsPage />} />
+      <Route path="/settings/starter-kit" element={<StarterKitSettingsPage />} />
       <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
       <Route path="/settings/bestellformular" element={<BestellFormularSettingsPage />} />
       <Route path="/settings/order-list-buttons" element={<OrderListSettingsPage />} />

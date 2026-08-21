@@ -8,6 +8,7 @@ import type { OrderHistoryEntry } from './orderHistory'
 import type { OrderListSettings } from './orderListSettings'
 import type { OrderStatus } from './orderStatus'
 import type { PickupLocation } from './pickupLocation'
+import type { StarterKitCategory } from './starterKit'
 
 export const BACKUP_SCHEMA_VERSION = 1
 
@@ -29,6 +30,7 @@ export interface BackupData {
     orderHistory: OrderHistoryEntry[]
     pickupLocations: PickupLocation[]
     lieferscheinChecks: LieferscheinCheckRecord[]
+    starterKitCategories: StarterKitCategory[]
   }
   singletons: {
     notificationSettings: NotificationSettings | null
@@ -45,6 +47,7 @@ export interface BackupSummary {
   orderHistory: number
   pickupLocations: number
   lieferscheinChecks: number
+  starterKitCategories: number
 }
 
 export function summarizeBackup(data: BackupData): BackupSummary {
@@ -56,5 +59,6 @@ export function summarizeBackup(data: BackupData): BackupSummary {
     orderHistory: data.collections.orderHistory.length,
     pickupLocations: data.collections.pickupLocations.length,
     lieferscheinChecks: data.collections.lieferscheinChecks.length,
+    starterKitCategories: data.collections.starterKitCategories.length,
   }
 }

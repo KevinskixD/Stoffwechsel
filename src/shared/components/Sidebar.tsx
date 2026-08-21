@@ -76,6 +76,12 @@ const SETTINGS_ITEMS: NavItemDef[] = [
     match: (path) => path === '/settings/pickup-locations',
   },
   {
+    to: '/settings/starter-kit',
+    label: 'Basisausrüstung',
+    Icon: GearIcon,
+    match: (path) => path === '/settings/starter-kit',
+  },
+  {
     to: '/settings/notifications',
     label: 'Benachrichtigung',
     Icon: GearIcon,

@@ -57,6 +57,18 @@ same pattern as described below), `bestellFormular` (Excel order-file generation
 `lieferscheinCheck` (Gemini-based delivery-note matching), `orderHistory` (audit log), and
 `backup` (full-database export/import) — each shaped around what it actually does.
 
+`starterKit` (`src/features/starterKit/`) is a third variant: a settings-list page
+(`StarterKitSettingsPage.tsx`, mirrors `orderStatuses`/`pickupLocations`'s drag-reorder +
+inline-rename shape) but with **no** `active` toggle (nothing references a category by id, so
+hard-delete is safe) and each row manually curates a `articleIds: string[]` — since every clothing
+size is its own separate `Article` doc in this app (no size-grouping field exists), an admin picks
+which specific Articles belong to a category (e.g. all size variants of one item) via
+`arrayUnion`/`arrayRemove`, and display order is just insertion order. Paired with a one-off
+bulk-order page (`StarterKitOrderForm.tsx`) that pre-selects an employee's starter kit and lets the
+operator pick one Article (= one size) per category, then calls `createOrder` from
+`orders/api.ts` once per selected category — no new order-mutation/inventory/history logic, purely
+a batch UI over the existing single-order pipeline.
+
 Cross-cutting reusable pieces live in `src/shared/`:
 - `shared/components` — table, search, pagination, filters, badges used by every list page
 - `shared/hooks/useFirestoreQuery` — subscribes to a `Query` via `onSnapshot`; on query error
@@ -102,7 +114,7 @@ was chosen over cursor pagination, while still keeping live `onSnapshot` updates
 `src/firebase/converters.ts` has one generic `createConverter<T>()` used by every collection: it
 strips `id` on write (Firestore stores it as the doc ID) and hydrates `createdAt`/`updatedAt`
 Timestamps into `Date` on read. Every collection this app owns must be individually allow-listed
-in `firestore.rules` (currently 11 collections/singletons); all other paths are denied by the
+in `firestore.rules` (currently 12 collections/singletons); all other paths are denied by the
 top-level catch-all. `src/features/backup/api.ts` doubles as the authoritative list — it
 enumerates every collection/singleton for export/restore, so a newly added collection needs an
 entry there too, or it's silently excluded from backups.

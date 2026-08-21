@@ -440,6 +440,12 @@ export function OrderListPage() {
             >
               Alle löschen
             </button>
+            <Link
+              to="/orders/starter-kit"
+              className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+            >
+              Basisausrüstung bestellen
+            </Link>
             <PrimaryLinkButton to="/orders/new">+ Neue Bestellung</PrimaryLinkButton>
           </>
         }
