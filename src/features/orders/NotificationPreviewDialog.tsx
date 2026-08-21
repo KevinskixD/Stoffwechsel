@@ -35,7 +35,7 @@ export function NotificationPreviewDialog({
   const text = renderNotificationText(greetingTemplate, lineTemplate, employeeName, lines)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.45)]" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.45)] p-4" onClick={onCancel}>
       <div
         className="w-full max-w-lg rounded-2xl bg-surface p-7 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
         onClick={(e) => e.stopPropagation()}

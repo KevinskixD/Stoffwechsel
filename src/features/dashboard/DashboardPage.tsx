@@ -56,7 +56,7 @@ export function DashboardPage() {
   const recentOrders = orders.slice(0, 5)
 
   return (
-    <div className="p-9 pb-16">
+    <div className="p-4 pt-[4.5rem] pb-10 lg:p-9 lg:pb-16">
       <div className="mb-7">
         <h1 className="mb-1.5 text-2xl font-extrabold text-gray-900">Übersicht</h1>
         <p className="text-sm text-black/50">Aktueller Stand der Uniformverwaltung</p>
@@ -66,7 +66,7 @@ export function DashboardPage() {
         <p className="text-gray-400">Lädt…</p>
       ) : (
         <>
-          <div className="mb-8 grid grid-cols-4 gap-4">
+          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {kpis.map((kpi) => (
               <div key={kpi.label} className="flex flex-col gap-2 rounded-xl border border-black/[0.08] bg-surface p-5">
                 <span className="text-xs font-bold uppercase tracking-wide text-black/45">{kpi.label}</span>
@@ -78,7 +78,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-[1.4fr_1fr] gap-5">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
             <div className="rounded-xl border border-black/[0.08] bg-surface p-6">
               <h3 className="mb-4 text-base font-extrabold text-gray-900">Letzte Bestellungen</h3>
               {recentOrders.length === 0 ? (

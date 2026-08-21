@@ -87,7 +87,7 @@ export function BackupSettingsPage() {
   }
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <PageHeader
         title="Datensicherung"
         subtitle="Alle Daten manuell als eine Datei exportieren oder aus einer solchen Datei wiederherstellen"

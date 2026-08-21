@@ -14,7 +14,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         <h1 className="mb-1.5 text-2xl font-extrabold text-gray-900">{title}</h1>
         <p className="text-sm text-black/50">{subtitle}</p>
       </div>
-      {action ? <div className="flex shrink-0 items-center gap-3">{action}</div> : null}
+      {action ? <div className="flex flex-wrap items-center gap-3">{action}</div> : null}
     </div>
   )
 }

@@ -188,7 +188,7 @@ export function ArticleListPage() {
   ]
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <PageHeader
         title="Artikel"
         subtitle="Uniformteile im Sortiment"

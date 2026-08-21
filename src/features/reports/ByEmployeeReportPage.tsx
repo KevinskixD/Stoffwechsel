@@ -62,7 +62,7 @@ export function ByEmployeeReportPage() {
   ]
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <h1 className="mb-1.5 text-2xl font-extrabold text-gray-900">Berichte</h1>
       <p className="mb-5 text-sm text-black/50">Summen und Verteilungen über alle Bestellungen</p>
       <ReportTabs />

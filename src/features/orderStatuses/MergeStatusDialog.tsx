@@ -12,7 +12,7 @@ export function MergeStatusDialog({ open, names, name, onNameChange, error, onCo
   if (!open || names.length < 2) return null
   const namesList = names.map((n) => `"${n}"`).join(', ')
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.45)]" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.45)] p-4" onClick={onCancel}>
       <div
         className="w-full max-w-sm rounded-2xl bg-surface p-7 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
         onClick={(e) => e.stopPropagation()}

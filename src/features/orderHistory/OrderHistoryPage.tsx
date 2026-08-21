@@ -57,7 +57,7 @@ export function OrderHistoryPage() {
     .filter((e) => matchesAllTokens(debouncedSearch, e.employeeName, e.articleName))
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <PageHeader title="Verlauf" subtitle="Erstellung, Bearbeitung und Statusänderungen aller Bestellungen" />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

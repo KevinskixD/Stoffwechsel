@@ -120,7 +120,7 @@ export function OrderStatusSettingsPage() {
   }
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <PageHeader
         title="Einstellungen"
         subtitle="Bestellstatus verwalten — bestimmt Auswahl und Reihenfolge im Bestellformular"

@@ -155,7 +155,7 @@ export function LieferscheinCheckPage() {
   const totalIncomplete = matchResult?.filter((r) => r.leftoverQuantity > 0).length ?? 0
 
   return (
-    <div className="px-11 pt-9 pb-15">
+    <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
       <PageHeader
         title="Lieferschein prüfen"
         subtitle="Lieferschein hochladen und automatisch die passenden Bestellungen auf abholbereit setzen"
@@ -202,7 +202,7 @@ export function LieferscheinCheckPage() {
           <h2 className="mb-2 text-[13px] font-bold text-black/55">Erkannte Positionen (vor Abgleich prüfen/korrigieren)</h2>
           <div className="space-y-2">
             {lines.map((line, index) => (
-              <div key={index} className="grid grid-cols-[100px_1fr_100px_auto] items-center gap-2">
+              <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[100px_1fr_100px_auto] sm:items-center">
                 <input
                   value={line.articleNumber}
                   onChange={(e) => updateLine(index, { articleNumber: e.target.value })}

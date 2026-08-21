@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../assets/oerk-logo.png'
 import { useTheme, type ThemePreference } from '../hooks/useTheme'
@@ -11,6 +11,7 @@ import {
   GearIcon,
   HelpIcon,
   HistoryIcon,
+  MenuIcon,
   MonitorIcon,
   MoonIcon,
   OrdersIcon,
@@ -137,69 +138,98 @@ export function Sidebar() {
   const { pathname } = useLocation()
   const settingsActive = isSettingsPath(pathname)
   const [settingsOpen, setSettingsOpen] = useState(settingsActive)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const { preference, cycle } = useTheme()
   const ThemeIcon = THEME_ICON[preference]
 
+  // Collapse the mobile drawer whenever the route changes (nav-link click, back/forward, etc.).
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
   return (
-    <div className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-black/[0.08] bg-surface">
-      <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 pt-[22px] pb-[18px]">
-        <img src={logo} alt="ÖRK Logo" className="h-12 w-12 shrink-0 object-contain" />
-        <div className="flex flex-col leading-tight">
-          <span className="text-[13px] font-extrabold tracking-wide text-gray-900">Bekleidungsreferat</span>
-          <span className="text-[10.5px] font-semibold text-black/45">Lieboch</span>
+    <>
+      <div className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-black/[0.08] bg-surface px-4 py-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Menü öffnen"
+          className="flex h-8 w-8 shrink-0 items-center justify-center text-gray-900"
+        >
+          <MenuIcon />
+        </button>
+        <img src={logo} alt="ÖRK Logo" className="h-8 w-8 shrink-0 object-contain" />
+        <span className="text-[13px] font-extrabold tracking-wide text-gray-900">Bekleidungsreferat</span>
+      </div>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-[rgba(0,0,0,0.45)] lg:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <div
+        className={`fixed top-0 left-0 z-50 flex h-screen w-[248px] flex-col border-r border-black/[0.08] bg-surface transition-transform duration-200 lg:sticky lg:z-auto lg:shrink-0 lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 pt-[22px] pb-[18px]">
+          <img src={logo} alt="ÖRK Logo" className="h-12 w-12 shrink-0 object-contain" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[13px] font-extrabold tracking-wide text-gray-900">Bekleidungsreferat</span>
+            <span className="text-[10.5px] font-semibold text-black/45">Lieboch</span>
+          </div>
+        </div>
+
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
+          {NAV_ITEMS.map((item) => (
+            <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
+          ))}
+        </nav>
+
+        <div className="flex flex-col gap-0.5 border-t border-black/[0.06] p-3 pb-4">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((open) => !open)}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-brand-tint ${
+              settingsActive ? 'text-brand' : 'text-gray-900'
+            }`}
+          >
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center ${
+                settingsActive ? 'text-brand' : 'text-black/55'
+              }`}
+            >
+              <GearIcon />
+            </span>
+            <span className="flex-1 text-left">Einstellungen</span>
+            <span
+              className={`flex h-4 w-4 shrink-0 items-center justify-center text-black/40 transition-transform ${
+                settingsOpen ? 'rotate-180' : ''
+              }`}
+            >
+              <ChevronDownIcon />
+            </span>
+          </button>
+
+          {settingsOpen && (
+            <div className="flex flex-col gap-0.5 pl-4">
+              {SETTINGS_ITEMS.map((item) => (
+                <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={cycle}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-brand-tint"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center text-black/55">
+              <ThemeIcon />
+            </span>
+            {THEME_LABEL[preference]}
+          </button>
         </div>
       </div>
-
-      <nav className="flex flex-1 flex-col gap-0.5 p-3">
-        {NAV_ITEMS.map((item) => (
-          <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
-        ))}
-      </nav>
-
-      <div className="flex flex-col gap-0.5 border-t border-black/[0.06] p-3 pb-4">
-        <button
-          type="button"
-          onClick={() => setSettingsOpen((open) => !open)}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-brand-tint ${
-            settingsActive ? 'text-brand' : 'text-gray-900'
-          }`}
-        >
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center ${
-              settingsActive ? 'text-brand' : 'text-black/55'
-            }`}
-          >
-            <GearIcon />
-          </span>
-          <span className="flex-1 text-left">Einstellungen</span>
-          <span
-            className={`flex h-4 w-4 shrink-0 items-center justify-center text-black/40 transition-transform ${
-              settingsOpen ? 'rotate-180' : ''
-            }`}
-          >
-            <ChevronDownIcon />
-          </span>
-        </button>
-
-        {settingsOpen && (
-          <div className="flex flex-col gap-0.5 pl-4">
-            {SETTINGS_ITEMS.map((item) => (
-              <NavRow key={item.to} to={item.to} label={item.label} Icon={item.Icon} active={item.match(pathname)} />
-            ))}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={cycle}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-brand-tint"
-        >
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-black/55">
-            <ThemeIcon />
-          </span>
-          {THEME_LABEL[preference]}
-        </button>
-      </div>
-    </div>
+    </>
   )
 }
