@@ -109,7 +109,13 @@ export function OrderListPage() {
   const filtered = rawOrders
     .filter((o) => (status ? o.status === status : true))
     .filter((o) =>
-      matchesAllTokens(debouncedSearch, o.employeeName, o.articleName, personnelNumberByEmployeeId.get(o.employeeId) ?? ''),
+      matchesAllTokens(
+        debouncedSearch,
+        o.employeeName,
+        o.articleName,
+        o.articleNumber,
+        personnelNumberByEmployeeId.get(o.employeeId) ?? '',
+      ),
     )
 
   useEffect(() => {
@@ -478,7 +484,11 @@ export function OrderListPage() {
           <FilterDateInput value={dateTo} onChange={setDateTo} />
         </FilterField>
         <FilterField label="Suche">
-          <SearchInput value={search} onChange={setSearch} placeholder="Mitarbeiter, Personalnummer oder Artikel…" />
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Mitarbeiter, Personalnummer, Artikel oder Artikelnummer…"
+          />
         </FilterField>
       </div>
       <div className="mb-4.5 flex items-center justify-end gap-3">
