@@ -3,19 +3,22 @@ import { BrowserRouter } from 'react-router-dom'
 import { isFirebaseConfigured } from './firebase/config'
 import { ensureSeedData } from './firebase/seed'
 import { AppRoutes } from './routes/router'
+import { LoginScreen } from './shared/components/LoginScreen'
 import { Sidebar } from './shared/components/Sidebar'
 import { ToastProvider } from './shared/components/ToastProvider'
+import { useAuth } from './shared/hooks/useAuth'
 
 function App() {
+  const { user, loading: authLoading, error: authError, signIn } = useAuth()
   const [seeded, setSeeded] = useState(false)
   const hasSeeded = useRef(false)
 
   useEffect(() => {
-    if (!isFirebaseConfigured) return
+    if (!isFirebaseConfigured || !user) return
     if (hasSeeded.current) return
     hasSeeded.current = true
     ensureSeedData().finally(() => setSeeded(true))
-  }, [])
+  }, [user])
 
   if (!isFirebaseConfigured) {
     return (
@@ -30,6 +33,14 @@ function App() {
         </p>
       </div>
     )
+  }
+
+  if (authLoading) {
+    return <div className="p-6 text-gray-400">Lädt…</div>
+  }
+
+  if (!user) {
+    return <LoginScreen onSignIn={signIn} error={authError} />
   }
 
   if (!seeded) {

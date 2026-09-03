@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../assets/oerk-logo.png'
+import { useAuth } from '../hooks/useAuth'
 import { useTheme, type ThemePreference } from '../hooks/useTheme'
 import {
   ArticleIcon,
@@ -11,6 +12,7 @@ import {
   GearIcon,
   HelpIcon,
   HistoryIcon,
+  LogOutIcon,
   MenuIcon,
   MonitorIcon,
   MoonIcon,
@@ -141,6 +143,7 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { preference, cycle } = useTheme()
   const ThemeIcon = THEME_ICON[preference]
+  const { user, signOutUser } = useAuth()
 
   // Collapse the mobile drawer whenever the route changes (nav-link click, back/forward, etc.).
   useEffect(() => {
@@ -228,6 +231,19 @@ export function Sidebar() {
             </span>
             {THEME_LABEL[preference]}
           </button>
+
+          {user && (
+            <button
+              type="button"
+              onClick={signOutUser}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-brand-tint"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center text-black/55">
+                <LogOutIcon />
+              </span>
+              <span className="flex-1 truncate text-left">{user.email}</span>
+            </button>
+          )}
         </div>
       </div>
     </>

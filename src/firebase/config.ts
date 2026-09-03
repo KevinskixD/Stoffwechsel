@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { GoogleAuthProvider, getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -14,3 +15,9 @@ export const isFirebaseConfigured = Object.values(firebaseConfig).every((value) 
 
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
+export const auth = getAuth(app)
+export const googleProvider = new GoogleAuthProvider()
+
+// Must match the email in the isAuthorized() function in firestore.rules exactly, or the
+// client-side gate and the server-side rule enforcement will disagree.
+export const ALLOWED_EMAIL = 'kevin.kundigraber@gmail.com'

@@ -3,14 +3,17 @@
 Web-Tool für die Uniform-Bestellungs- und Inventarisierungsverwaltung. Ersetzt die bisherige
 Excel-Lösung für einen einzelnen Bekleidungsreferenten. React (Vite) + TypeScript, Firestore als
 Datenhaltung, `xlsx` für den clientseitigen Excel-Import. Rein lokaler Betrieb (`npm run dev`),
-keine Authentifizierung, kein Multi-User-Betrieb — siehe Sicherheitshinweis unten.
+Zugriff ist auf ein einzelnes autorisiertes Google-Konto beschränkt (Firebase Authentication),
+kein Multi-User-Betrieb — siehe Sicherheitshinweis unten.
 
 ## Setup
 
 1. Firebase-Projekt anlegen (https://console.firebase.google.com/), darin eine Firestore-Datenbank
    (Native mode) erstellen.
 2. In den Projekteinstellungen eine Web-App registrieren und die Config-Werte kopieren.
-3. `.env.local` anlegen (Vorlage: `.env.local.example`) und die Werte eintragen:
+3. Unter **Authentication → Sign-in method** den Google-Provider aktivieren (nur so kann sich
+   das autorisierte Google-Konto anmelden; ohne diesen Schritt schlägt der Login-Popup fehl).
+4. `.env.local` anlegen (Vorlage: `.env.local.example`) und die Werte eintragen:
    ```
    VITE_FIREBASE_API_KEY=...
    VITE_FIREBASE_AUTH_DOMAIN=...
@@ -19,14 +22,14 @@ keine Authentifizierung, kein Multi-User-Betrieb — siehe Sicherheitshinweis un
    VITE_FIREBASE_MESSAGING_SENDER_ID=...
    VITE_FIREBASE_APP_ID=...
    ```
-4. Abhängigkeiten installieren: `npm install`
-5. Firestore-Regeln deployen (einmalig und nach jeder Änderung an `firestore.rules`):
+5. Abhängigkeiten installieren: `npm install`
+6. Firestore-Regeln deployen (einmalig und nach jeder Änderung an `firestore.rules`):
    ```
    npm install -g firebase-tools   # falls noch nicht vorhanden
    firebase login
    firebase deploy --only firestore:rules --project <dein-projekt-id>
    ```
-6. App starten: `npm run dev`
+7. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
 
 Die sieben Standard-Bestellstatus ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
 "Abgeholt", "Umtausch", "Abgeschlossen") werden beim ersten Start automatisch in Firestore
@@ -34,12 +37,12 @@ angelegt, sofern die Collection `orderStatuses` noch leer ist.
 
 ## Sicherheitshinweis
 
-Diese App hat keine Authentifizierung. `firestore.rules` beschränkt Lese-/Schreibzugriff auf die
-vier bekannten Collections, ist aber **keine echte Zugriffskontrolle** — jeder mit der
-Firebase-Projekt-Config könnte lesen/schreiben. Das ist für den rein lokalen Betrieb (kein
-Firebase Hosting) akzeptiert. Falls sich das ändert (Hosting-Deploy, Config gerät öffentlich
-z. B. in ein öffentliches Git-Repo), müssen die Regeln überarbeitet werden (z. B. einfache
-Firebase-Auth-Anmeldung ergänzen).
+Die App nutzt Firebase Authentication (Google Sign-In), beschränkt auf genau ein autorisiertes
+Google-Konto (`ALLOWED_EMAIL` in `src/firebase/config.ts`). `firestore.rules` setzt das serverseitig
+durch — `isAuthorized()` prüft `request.auth.token.email` gegen dieselbe Adresse — und ist damit
+eine echte Zugriffskontrolle, nicht nur eine clientseitige Prüfung. Wichtig: die E-Mail-Adresse
+muss in `firestore.rules` und `src/firebase/config.ts` exakt übereinstimmen, sonst driften
+Client-Gate und Server-Regel auseinander.
 
 ## Projektstruktur
 
@@ -50,7 +53,7 @@ Firebase-Auth-Anmeldung ergänzen).
   Import), parametrisiert je Entität über `ImportEntityConfig`.
 - `src/shared/components`, `src/shared/hooks`, `src/shared/utils` — generische Bausteine
   (Tabelle, Suche, Pagination, Firestore-Query-Hook, Datums-/Suchformatierung).
-- `src/firebase` — Firebase-Init, Firestore-Converter, Seed-Logik für Bestellstatus.
+- `src/firebase` — Firebase-Init (inkl. Auth), Firestore-Converter, Seed-Logik für Bestellstatus.
 
 ## Bekannte Einschränkung
 

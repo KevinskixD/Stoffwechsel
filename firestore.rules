@@ -1,50 +1,54 @@
 rules_version = '2';
 
-// No authentication exists in this app (single local user, no Firebase Hosting deploy).
-// These rules are NOT a real access boundary - anyone with the Firebase project config
-// could read/write these four collections. They only prevent writes to unrelated
-// collection paths if the config ever leaks. Revisit (add auth) if hosting plans change
-// or the config is ever exposed publicly.
+// Access is restricted to a single authorized Google account (Firebase Authentication, Google
+// Sign-In). The email below MUST match ALLOWED_EMAIL in src/firebase/config.ts exactly, or the
+// client-side gate and this server-side rule will disagree.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAuthorized() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'kevin.kundigraber@gmail.com';
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
     match /employees/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /articles/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /orderStatuses/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /orders/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /orderHistory/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /pickupLocations/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /starterKitCategories/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /notificationSettings/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /bestellFormularSettings/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /orderListSettings/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /lieferscheinChecks/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
     match /appMeta/{id} {
-      allow read, write: if true;
+      allow read, write: if isAuthorized();
     }
   }
 }

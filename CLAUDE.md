@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Uniformverwaltung: web tool for uniform ordering/inventory management, replacing an Excel-based
 workflow for a single clothing officer (Bekleidungsreferent). React (Vite) + TypeScript, Firestore
-as the only datastore, `xlsx` for client-side Excel import. Purely local operation (`npm run dev`),
-no authentication, no multi-user support.
+as the only datastore, `xlsx` for client-side Excel import. Access is gated by Firebase
+Authentication (Google Sign-In) restricted to a single authorized account; no multi-user support.
 
 ## Commands
 
@@ -22,18 +22,21 @@ No test runner is configured in this repo.
 ### Firestore setup (required before `npm run dev` works)
 
 1. Copy `.env.local.example` to `.env.local` and fill in Firebase web app config values.
-2. Deploy rules/indexes after any change to `firestore.rules` or `firestore.indexes.json`:
+2. Enable the Google provider under Authentication → Sign-in method in the Firebase Console —
+   without it, `signInWithPopup` fails and the app is stuck on the login screen regardless of
+   correct `.env.local` values.
+3. Deploy rules/indexes after any change to `firestore.rules` or `firestore.indexes.json`:
    ```
    firebase deploy --only firestore:rules --project <project-id>
    firebase deploy --only firestore:indexes --project <project-id>
    ```
-3. The seven default order statuses ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
+4. The seven default order statuses ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
    "Abgeholt", "Umtausch", "Abgeschlossen") are seeded automatically on first run if the
    `orderStatuses` collection is empty (`src/firebase/seed.ts`) — race-safe via a transaction
    against an `appMeta/seed` marker doc, so two overlapping first-runs (two tabs, a dev
    reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
    is deliberately excluded from backups.
-4. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
+5. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
    to extract line items from an uploaded delivery-note PDF — set `VITE_GEMINI_API_KEY` (see
    `.env.local.example`) or it throws at call time. The model is pinned to the `-latest` alias
    (`gemini-flash-latest`), not a dated version, since dated versions can be deprecated out from
@@ -110,17 +113,33 @@ was chosen over cursor pagination, while still keeping live `onSnapshot` updates
 
 ### Firestore access model
 
-`src/firebase/config.ts` initializes the app/db from `VITE_FIREBASE_*` env vars.
-`src/firebase/converters.ts` has one generic `createConverter<T>()` used by every collection: it
-strips `id` on write (Firestore stores it as the doc ID) and hydrates `createdAt`/`updatedAt`
-Timestamps into `Date` on read. Every collection this app owns must be individually allow-listed
-in `firestore.rules` (currently 12 collections/singletons); all other paths are denied by the
-top-level catch-all. `src/features/backup/api.ts` doubles as the authoritative list — it
-enumerates every collection/singleton for export/restore, so a newly added collection needs an
-entry there too, or it's silently excluded from backups.
-These rules are **not real access control** (no auth exists) — they only limit blast radius if the
-Firebase config ever leaks, since this app has no Hosting deploy. If Hosting or public exposure of
-the config is ever introduced, revisit `firestore.rules` (add real auth) before relying on it.
+`src/firebase/config.ts` initializes the app/db from `VITE_FIREBASE_*` env vars, plus `auth`
+(`getAuth`), a `googleProvider` (`GoogleAuthProvider`), and `ALLOWED_EMAIL` — the single Google
+account permitted to sign in. `src/firebase/converters.ts` has one generic `createConverter<T>()`
+used by every collection: it strips `id` on write (Firestore stores it as the doc ID) and hydrates
+`createdAt`/`updatedAt` Timestamps into `Date` on read. Every collection this app owns must be
+individually allow-listed in `firestore.rules` (currently 12 collections/singletons); all other
+paths are denied by the top-level catch-all. `src/features/backup/api.ts` doubles as the
+authoritative list — it enumerates every collection/singleton for export/restore, so a newly added
+collection needs an entry there too, or it's silently excluded from backups.
+`firestore.rules` is real access control: every collection's `allow read, write` calls a shared
+`isAuthorized()` function that checks `request.auth.token.email` against a literal email address.
+**That literal must match `ALLOWED_EMAIL` in `src/firebase/config.ts` exactly** — the two are not
+derived from a single source (Firestore rules can't read app env vars), so changing one without the
+other silently breaks either the sign-in UX (client accepts, server rejects every read/write) or
+the access boundary (client blocks an account the rules would actually still deny — less risky, but
+still a drift bug worth avoiding).
+
+### Authentication gate
+
+`src/shared/hooks/useAuth.ts` wraps `onAuthStateChanged` and exposes `user`/`loading`/`error` plus
+`signIn`/`signOutUser`; called directly wherever needed (in `App.tsx` and in `Sidebar.tsx`) rather
+than through a context, mirroring the existing `useTheme()` pattern. If a signed-in Google account's
+email doesn't match `ALLOWED_EMAIL`, the hook immediately calls `signOut` and surfaces an inline
+error — this is a UX convenience only, not the real security boundary (see "Firestore access model"
+above). `App.tsx`'s gate order matters: auth must resolve (and the user must be signed in) *before*
+`ensureSeedData()` fires, since seeding writes to Firestore and would fail under `firestore.rules`
+if unauthenticated — the `useEffect` that triggers seeding depends on `[user]`, not `[]`.
 
 ### Orders denormalize employee/article data
 
@@ -242,3 +261,14 @@ React mounts to avoid a flash of the wrong theme.
 color-picker) are a deliberate exception: they're literal hex values from Firestore, bypass the
 token system entirely, and are intentionally left as fixed "light chips" in both themes — don't
 try to make these theme-aware.
+
+### Success/error messages: toast vs. inline
+
+`shared/components/ToastProvider.tsx` (`ToastProvider`/`useToast`, mounted in `App.tsx`) shows
+auto-dismissing success/error/info toasts, reusing the badge-color tokens and `bg-surface` so they
+adapt to dark mode automatically. Used by: the "Gespeichert." messages on settings pages, the
+article size backfill, the Lieferschein-Check result, and `OrderListPage`'s bulk-action messages.
+**Deliberately not** migrated to toast: form validation errors, the backup page's structured
+summaries, and other context-bound inline messages — these need to stay visible rather than
+auto-dismiss. When adding a new success/error message: transient, non-actionable messages → toast;
+messages the user needs in order to act (e.g. which field a validation error refers to) → inline.
