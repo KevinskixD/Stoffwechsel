@@ -17,6 +17,7 @@ import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
 import { extractSizeFromArticleName } from '../../shared/utils/sizeExtraction'
 import type { Article, ArticleInput } from '../../types/article'
+import { syncArticleToMatrix, syncArticlesToMatrix, type MatrixBulkSyncSummary, type MatrixSyncResult } from '../bestellFormular/matrixSync'
 
 const articleConverter = createConverter<Article>()
 const articlesCollection = collection(db, 'articles')
@@ -35,7 +36,7 @@ export async function getArticle(id: string): Promise<Article | null> {
   return snapshot.exists() ? snapshot.data() : null
 }
 
-export async function createArticle(input: ArticleInput): Promise<void> {
+export async function createArticle(input: ArticleInput): Promise<MatrixSyncResult> {
   await addDoc(articlesCollection, {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
@@ -44,15 +45,17 @@ export async function createArticle(input: ArticleInput): Promise<void> {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+  return syncArticleToMatrix(input.articleNumber, input.articleName)
 }
 
-export async function updateArticle(id: string, input: ArticleInput): Promise<void> {
+export async function updateArticle(id: string, input: ArticleInput): Promise<MatrixSyncResult> {
   await updateDoc(doc(db, 'articles', id), {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
     inventoryQuantity: input.trackInventory ? input.inventoryQuantity : 0,
     updatedAt: serverTimestamp(),
   })
+  return syncArticleToMatrix(input.articleNumber, input.articleName)
 }
 
 export async function setArticleActive(id: string, active: boolean): Promise<void> {
@@ -153,6 +156,20 @@ export async function assignDeductibleToArticles(
     )
     await batch.commit()
   }
+}
+
+/**
+ * Manually re-syncs every article into the Bestellformular template's Matrix sheet — covers
+ * articles that predate the auto-sync, were bulk-imported, or were inline-renamed via
+ * `updateArticleField` (none of which trigger `syncArticleToMatrix` on their own).
+ */
+export async function syncAllArticlesToMatrix(): Promise<MatrixBulkSyncSummary> {
+  const snapshot = await getDocs(articlesCollection)
+  const articles = snapshot.docs.map((docSnap) => ({
+    articleNumber: String(docSnap.data().articleNumber ?? ''),
+    articleName: String(docSnap.data().articleName ?? ''),
+  }))
+  return syncArticlesToMatrix(articles)
 }
 
 /** One-time backfill: fills `size` from `articleName` for articles that don't have one yet. */

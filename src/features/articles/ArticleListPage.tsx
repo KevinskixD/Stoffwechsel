@@ -24,6 +24,7 @@ import {
   deleteArticle,
   deleteArticles,
   setArticleActive,
+  syncAllArticlesToMatrix,
   updateArticleDeductibleAmount,
   updateArticleField,
   updateArticleInventoryQuantity,
@@ -209,6 +210,24 @@ export function ArticleListPage() {
               className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
             >
               Größen aus Namen ergänzen
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const { synced, matrixFull, noTemplate } = await syncAllArticlesToMatrix()
+                if (noTemplate) {
+                  showToast('Keine Vorlage/Matrix-Tabelle konfiguriert. Siehe Einstellungen → Bestellformular.', 'error')
+                } else {
+                  showToast(
+                    `${synced} Artikel im Bestellformular ergänzt/aktualisiert.` +
+                      (matrixFull > 0 ? ` ${matrixFull} ohne Platz in der Matrix-Tabelle.` : ''),
+                    matrixFull > 0 ? 'error' : 'success',
+                  )
+                }
+              }}
+              className="rounded-lg border border-black/[0.12] px-4 py-2.5 text-[13.5px] font-bold text-gray-900"
+            >
+              Mit Bestellformular abgleichen
             </button>
             <button
               type="button"

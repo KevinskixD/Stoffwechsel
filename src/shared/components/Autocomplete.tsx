@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { matchesSearch } from '../utils/search'
 
 export interface AutocompleteOption<T> {
@@ -23,6 +23,7 @@ export function Autocomplete<T>({ options, value, onChange, placeholder = 'AuswÃ
   const selected = options.find((o) => o.value === value) ?? null
   const [query, setQuery] = useState(selected?.label ?? '')
   const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,29 +47,77 @@ export function Autocomplete<T>({ options, value, onChange, placeholder = 'AuswÃ
       ? options
       : options.filter((o) => matchesSearch(query, o.label))
 
+  function selectOption(option: AutocompleteOption<T>) {
+    onChange(option.value, option)
+    setQuery(option.label)
+    setOpen(false)
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const activeOption = filtered[Math.min(activeIndex, filtered.length - 1)]
+
+    if (event.key === 'ArrowDown' && filtered.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((index) => (index + 1) % filtered.length)
+      return
+    }
+
+    if (event.key === 'ArrowUp' && filtered.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((index) => (index - 1 + filtered.length) % filtered.length)
+      return
+    }
+
+    if (event.key === 'Enter' && open && activeOption) {
+      event.preventDefault()
+      selectOption(activeOption)
+      return
+    }
+
+    if (event.key === 'Escape') {
+      setOpen(false)
+      setQuery(selected ? selected.label : '')
+      return
+    }
+
+    // Commit the highlighted match before the browser advances focus. This makes Tab move
+    // directly from a searchable order-form field to the next form control.
+    if (event.key === 'Tab' && open && activeOption) {
+      selectOption(activeOption)
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <input
         type="text"
         value={query}
         placeholder={placeholder}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setOpen(true)
+          setActiveIndex(Math.max(0, filtered.findIndex((option) => option.value === selected?.value)))
+        }}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
+          setActiveIndex(0)
         }}
+        onKeyDown={handleKeyDown}
         className="w-full rounded-lg border border-black/[0.14] px-3 py-2 text-[13.5px] focus:border-brand focus:outline-none"
       />
       {open && filtered.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-black/[0.08] bg-surface shadow-lg">
-          {filtered.map((option) => (
+          {filtered.map((option, index) => (
             <li
               key={option.value}
-              className="cursor-pointer px-3 py-2 text-[13.5px] hover:bg-brand-tint"
+              className={`cursor-pointer px-3 py-2 text-[13.5px] hover:bg-brand-tint ${
+                index === Math.min(activeIndex, filtered.length - 1) ? 'bg-brand-tint' : ''
+              }`}
+              onMouseEnter={() => setActiveIndex(index)}
               onMouseDown={() => {
-                onChange(option.value, option)
-                setQuery(option.label)
-                setOpen(false)
+                selectOption(option)
               }}
             >
               {option.label}

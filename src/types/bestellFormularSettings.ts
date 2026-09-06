@@ -28,6 +28,11 @@ export interface BestellFormularSettings {
   triggerStatusId: string
   /** '' until configured. Included orders move to this status after generating. */
   targetStatusId: string
+  /** Second sheet in the template holding the Artikel-Nr./Bezeichnung lookup table (VLOOKUP source). */
+  matrixSheetName: string
+  matrixArtikelNrColumn: string
+  matrixBezeichnungColumn: string
+  matrixStartRow: number
   updatedAt: Date
 }
 

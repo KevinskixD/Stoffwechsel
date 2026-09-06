@@ -29,7 +29,7 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-[17px] font-extrabold text-gray-900">{title}</h2>
-        <p className="mt-1 text-[13px] text-black/55">{message}</p>
+        <p className="mt-1 whitespace-pre-line text-[13px] text-black/55">{message}</p>
         {children}
         <div className="mt-6 flex justify-end gap-2.5">
           <button

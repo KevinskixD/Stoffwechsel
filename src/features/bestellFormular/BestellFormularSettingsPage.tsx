@@ -8,7 +8,7 @@ import { emptyTableMapping, type TableMapping } from '../../types/bestellFormula
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { saveBestellFormularSettings } from './api'
 import { useBestellFormularSettings } from './hooks'
-import { detectMapping } from './templateMapping'
+import { detectMapping, detectMatrixSheet } from './templateMapping'
 
 const numberInputClass = `${formInputClass} w-20`
 const columnInputClass = `${formInputClass} w-16 uppercase`
@@ -110,6 +110,10 @@ export function BestellFormularSettingsPage() {
   const [lowerTable, setLowerTable] = useState<TableMapping>(emptyTableMapping())
   const [triggerStatusId, setTriggerStatusId] = useState('')
   const [targetStatusId, setTargetStatusId] = useState('')
+  const [matrixSheetName, setMatrixSheetName] = useState('')
+  const [matrixArtikelNrColumn, setMatrixArtikelNrColumn] = useState('')
+  const [matrixBezeichnungColumn, setMatrixBezeichnungColumn] = useState('')
+  const [matrixStartRow, setMatrixStartRow] = useState(0)
   const [initialized, setInitialized] = useState(false)
   const [detectError, setDetectError] = useState('')
   const { showToast } = useToast()
@@ -126,6 +130,10 @@ export function BestellFormularSettingsPage() {
     setLowerTable(settings.lowerTable)
     setTriggerStatusId(settings.triggerStatusId || statuses.find((s) => s.name === 'Zu Bestellen')?.id || '')
     setTargetStatusId(settings.targetStatusId || statuses.find((s) => s.name === 'Bestellt')?.id || '')
+    setMatrixSheetName(settings.matrixSheetName)
+    setMatrixArtikelNrColumn(settings.matrixArtikelNrColumn)
+    setMatrixBezeichnungColumn(settings.matrixBezeichnungColumn)
+    setMatrixStartRow(settings.matrixStartRow)
     setInitialized(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, statuses])
@@ -145,6 +153,14 @@ export function BestellFormularSettingsPage() {
       setOrtsstelleCell(detected.ortsstelleCell)
       setUpperTable(detected.upperTable)
       setLowerTable(detected.lowerTable)
+
+      const detectedMatrix = detectMatrixSheet(workbook, detected.sheetName)
+      if (detectedMatrix) {
+        setMatrixSheetName(detectedMatrix.matrixSheetName)
+        setMatrixArtikelNrColumn(detectedMatrix.matrixArtikelNrColumn)
+        setMatrixBezeichnungColumn(detectedMatrix.matrixBezeichnungColumn)
+        setMatrixStartRow(detectedMatrix.matrixStartRow)
+      }
     } catch (err) {
       setDetectError(err instanceof Error ? err.message : 'Vorlage konnte nicht gelesen werden.')
     }
@@ -164,6 +180,10 @@ export function BestellFormularSettingsPage() {
       lowerTable,
       triggerStatusId,
       targetStatusId,
+      matrixSheetName,
+      matrixArtikelNrColumn,
+      matrixBezeichnungColumn,
+      matrixStartRow,
     })
     showToast('Gespeichert.', 'success')
   }
@@ -221,6 +241,48 @@ export function BestellFormularSettingsPage() {
 
         <TableMappingFields label="Tabelle mit Artikel-Nr." mapping={upperTable} onChange={setUpperTable} showArtikelNr />
         <TableMappingFields label="Freitext-Tabelle (ohne Artikel-Nr.)" mapping={lowerTable} onChange={setLowerTable} showArtikelNr={false} />
+
+        <div className="rounded-lg border border-black/[0.12] p-4">
+          <p className="mb-1 text-[13px] font-bold text-gray-900">Matrix-Tabelle (Artikel-Nachschlage-Blatt)</p>
+          <p className="mb-3 text-[13px] text-black/45">
+            Zweites Tabellenblatt mit Artikelnummer/-bezeichnung, aus dem die Bezeichnung-Spalte der
+            Artikel-Nr.-Tabelle per VLOOKUP nachgeschlagen wird. Neue Artikel werden hier automatisch ergänzt.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <FormField label="Tabellenblatt">
+              <input
+                type="text"
+                value={matrixSheetName}
+                onChange={(e) => setMatrixSheetName(e.target.value)}
+                className={formInputClass}
+              />
+            </FormField>
+            <FormField label="Startzeile">
+              <input
+                type="number"
+                value={matrixStartRow}
+                onChange={(e) => setMatrixStartRow(Number(e.target.value))}
+                className={numberInputClass}
+              />
+            </FormField>
+            <FormField label="Artikel-Nr. Spalte">
+              <input
+                type="text"
+                value={matrixArtikelNrColumn}
+                onChange={(e) => setMatrixArtikelNrColumn(e.target.value.toUpperCase())}
+                className={columnInputClass}
+              />
+            </FormField>
+            <FormField label="Bezeichnung Spalte">
+              <input
+                type="text"
+                value={matrixBezeichnungColumn}
+                onChange={(e) => setMatrixBezeichnungColumn(e.target.value.toUpperCase())}
+                className={columnInputClass}
+              />
+            </FormField>
+          </div>
+        </div>
 
         <FormField label="Auslösender Status (Bestellungen gelten als zu bestellen)">
           <select value={triggerStatusId} onChange={(e) => setTriggerStatusId(e.target.value)} className={formInputClass}>

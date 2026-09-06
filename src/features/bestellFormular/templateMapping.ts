@@ -9,6 +9,13 @@ export interface DetectedMapping {
   lowerTable: TableMapping
 }
 
+export interface DetectedMatrixSheet {
+  matrixSheetName: string
+  matrixArtikelNrColumn: string
+  matrixBezeichnungColumn: string
+  matrixStartRow: number
+}
+
 function numberToColumnLetter(n: number): string {
   let letters = ''
   let num = n
@@ -128,5 +135,25 @@ export function detectMapping(ws: ExcelJS.Worksheet): DetectedMapping {
     ortsstelleCell: findLabelValueCell(ws, 'ortsstelle:'),
     upperTable,
     lowerTable,
+  }
+}
+
+/**
+ * Best-effort detection of the second sheet holding the Artikel-Nr./Bezeichnung lookup table
+ * that the Formular sheet's VLOOKUP formulas read from. Prefers a sheet literally named "Matrix"
+ * (case-insensitive), otherwise falls back to the first sheet that isn't the Formular sheet.
+ * Always shown for confirmation/override in the settings form, same as detectMapping().
+ */
+export function detectMatrixSheet(workbook: ExcelJS.Workbook, formularSheetName: string): DetectedMatrixSheet | null {
+  const byName = workbook.worksheets.find((sheet) => sheet.name.trim().toLowerCase() === 'matrix')
+  const fallback = workbook.worksheets.find((sheet) => sheet.name !== formularSheetName)
+  const matrixWs = byName ?? fallback
+  if (!matrixWs) return null
+
+  return {
+    matrixSheetName: matrixWs.name,
+    matrixArtikelNrColumn: 'A',
+    matrixBezeichnungColumn: 'B',
+    matrixStartRow: 2,
   }
 }

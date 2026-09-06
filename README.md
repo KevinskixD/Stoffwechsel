@@ -29,7 +29,17 @@ kein Multi-User-Betrieb — siehe Sicherheitshinweis unten.
    firebase login
    firebase deploy --only firestore:rules --project <dein-projekt-id>
    ```
-7. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
+7. Für den Lieferschein-Check die serverseitige Function einrichten. Der Gemini-Key darf **nicht**
+   in `.env.local` stehen, weil alle `VITE_*`-Variablen im Browser veröffentlicht würden. Einen
+   neuen oder rotierten Key als Firebase Secret setzen und die Function deployen:
+   ```
+   firebase functions:secrets:set GEMINI_API_KEY --project <dein-projekt-id>
+   firebase deploy --only functions --project <dein-projekt-id>
+   ```
+   Die Function läuft in `europe-west1`, akzeptiert nur das freigegebene, verifizierte
+   Google-Konto und verarbeitet ausschließlich PDFs bis 8 MB. Ein zuvor als
+   `VITE_GEMINI_API_KEY` verwendeter Key sollte in Google AI Studio umgehend rotiert werden.
+8. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
 
 Die sieben Standard-Bestellstatus ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
 "Abgeholt", "Umtausch", "Abgeschlossen") werden beim ersten Start automatisch in Firestore
@@ -43,6 +53,10 @@ durch — `isAuthorized()` prüft `request.auth.token.email` gegen dieselbe Adre
 eine echte Zugriffskontrolle, nicht nur eine clientseitige Prüfung. Wichtig: die E-Mail-Adresse
 muss in `firestore.rules` und `src/firebase/config.ts` exakt übereinstimmen, sonst driften
 Client-Gate und Server-Regel auseinander.
+
+Der Lieferschein-Check sendet das ausgewählte PDF über eine authentifizierte Firebase Function an
+Gemini. Der dafür erforderliche Key liegt ausschließlich in Firebase Secret Manager; er ist nicht
+Teil des ausgelieferten Browser-Bundles.
 
 ## Projektstruktur
 

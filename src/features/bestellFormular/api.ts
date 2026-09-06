@@ -22,6 +22,10 @@ export function defaultBestellFormularSettings(): BestellFormularSettings {
     lowerTable: emptyTableMapping(),
     triggerStatusId: '',
     targetStatusId: '',
+    matrixSheetName: '',
+    matrixArtikelNrColumn: '',
+    matrixBezeichnungColumn: '',
+    matrixStartRow: 0,
     updatedAt: new Date(),
   }
 }
@@ -56,6 +60,10 @@ function fromSnapshot(data: Record<string, unknown> | undefined): BestellFormula
     lowerTable: fromTableMapping(data.lowerTable as Record<string, unknown> | undefined),
     triggerStatusId: (data.triggerStatusId as string | undefined) ?? defaults.triggerStatusId,
     targetStatusId: (data.targetStatusId as string | undefined) ?? defaults.targetStatusId,
+    matrixSheetName: (data.matrixSheetName as string | undefined) ?? defaults.matrixSheetName,
+    matrixArtikelNrColumn: (data.matrixArtikelNrColumn as string | undefined) ?? defaults.matrixArtikelNrColumn,
+    matrixBezeichnungColumn: (data.matrixBezeichnungColumn as string | undefined) ?? defaults.matrixBezeichnungColumn,
+    matrixStartRow: (data.matrixStartRow as number | undefined) ?? defaults.matrixStartRow,
     updatedAt: new Date(),
   }
 }
@@ -82,6 +90,10 @@ export async function saveBestellFormularSettings(
     | 'lowerTable'
     | 'triggerStatusId'
     | 'targetStatusId'
+    | 'matrixSheetName'
+    | 'matrixArtikelNrColumn'
+    | 'matrixBezeichnungColumn'
+    | 'matrixStartRow'
   >,
 ): Promise<void> {
   await setDoc(settingsRef(), { ...patch, updatedAt: serverTimestamp() }, { merge: true })

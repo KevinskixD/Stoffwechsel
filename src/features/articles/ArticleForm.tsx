@@ -1,10 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FormCard, FormField, formInputClass } from '../../shared/components/FormField'
+import { useToast, type ToastVariant } from '../../shared/components/ToastProvider'
 import { extractSizeFromArticleName } from '../../shared/utils/sizeExtraction'
 import type { ArticleInput } from '../../types/article'
+import type { MatrixSyncResult } from '../bestellFormular/matrixSync'
 import { usePickupLocations } from '../pickupLocations/hooks'
 import { createArticle, getArticle, updateArticle } from './api'
+
+function showMatrixSyncToast(result: MatrixSyncResult, showToast: (message: string, variant?: ToastVariant) => void) {
+  if (result === 'synced') {
+    showToast('Auch im Bestellformular ergänzt.', 'success')
+  } else if (result === 'matrix_full' || result === 'no_matrix_sheet') {
+    showToast('Konnte nicht automatisch ins Bestellformular übernommen werden — bitte manuell nachtragen.', 'error')
+  }
+}
 
 const emptyForm: ArticleInput = {
   articleName: '',
@@ -24,6 +34,7 @@ export function ArticleForm() {
   const navigate = useNavigate()
 
   const { data: pickupLocations } = usePickupLocations(false)
+  const { showToast } = useToast()
 
   const [form, setForm] = useState<ArticleInput>(emptyForm)
   const [loading, setLoading] = useState(isEdit)
@@ -76,11 +87,8 @@ export function ArticleForm() {
         pickupLocationId: form.pickupLocationId,
         pickupLocationName: form.pickupLocationName,
       }
-      if (isEdit && id) {
-        await updateArticle(id, payload)
-      } else {
-        await createArticle(payload)
-      }
+      const syncResult = isEdit && id ? await updateArticle(id, payload) : await createArticle(payload)
+      showMatrixSyncToast(syncResult, showToast)
       navigate('/articles')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

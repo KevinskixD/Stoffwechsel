@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Project
 
@@ -16,8 +16,6 @@ Authentication (Google Sign-In) restricted to a single authorized account; no mu
   build can fail on typecheck even if Vite itself would succeed
 - `npm run lint` — oxlint (see `.oxlintrc.json`; `react/rules-of-hooks` is an error, not just a warning)
 - `npm run preview` — preview a production build
-- `npm --prefix functions run build` — compile Firebase Functions before deployment
-- `npm --prefix functions run lint` — typecheck the Firebase Functions
 
 No test runner is configured in this repo.
 
@@ -39,13 +37,8 @@ No test runner is configured in this repo.
    reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
    is deliberately excluded from backups.
 5. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
-   only through the authenticated `extractDeliveryNote` Firebase Function (`functions/src/index.ts`).
-   Set `GEMINI_API_KEY` as a Firebase Secret — **never** a `VITE_*` variable — then deploy with:
-   ```
-   firebase functions:secrets:set GEMINI_API_KEY --project <project-id>
-   firebase deploy --only functions --project <project-id>
-   ```
-   Cloud Functions and Secret Manager require the Firebase Blaze plan. The Function runs in
+   only through the authenticated `extractDeliveryNote` Firebase Function (`functions/src/index.ts`),
+   so `GEMINI_API_KEY` is a Firebase Secret — **never** a `VITE_*` variable. The Function runs in
    `europe-west1`, verifies the same authorized Google account as Firestore, and rejects non-PDFs
    and PDFs over 8 MB before sending them to Gemini. The model is pinned to the `-latest` alias
    (`gemini-flash-latest`), not a dated version, since dated versions can be deprecated out from
@@ -80,10 +73,6 @@ bulk-order page (`StarterKitOrderForm.tsx`) that pre-selects an employee's start
 operator pick one Article (= one size) per category, then calls `createOrder` from
 `orders/api.ts` once per selected category — no new order-mutation/inventory/history logic, purely
 a batch UI over the existing single-order pipeline.
-
-`functions/` contains the TypeScript Firebase Functions. It currently houses the EU-regional,
-server-side Gemini extraction call for Lieferschein-Check; `firebase.json` builds this package
-automatically before a Functions deployment.
 
 Cross-cutting reusable pieces live in `src/shared/`:
 - `shared/components` — table, search, pagination, filters, badges used by every list page
@@ -178,8 +167,7 @@ Article's `pickupLocationId`) reuse the same idiom as an inline `<select>` inste
 
 ### Order history (audit log)
 
-`src/features/orderHistory/` logs every order create/edit/status-change as an application-level
-append-only entry
+`src/features/orderHistory/` logs every order create/edit/status-change as an immutable entry
 (`OrderHistoryEntry`) in its own `orderHistory` collection — shown at `/orders/history`. Each
 order-mutating function in `orders/api.ts` fetches its own "before" snapshot internally (via
 `getOrder`/`getDocs`) rather than requiring callers to pass prior state, so adding a new mutation
@@ -189,8 +177,6 @@ the denormalized-field resync helpers (`updateOrderEmployeeNames` etc.) are inte
 logged — this log covers order content, not housekeeping. `exchangeOrder` is the one exception to
 the field-count tagging rule: it always logs `'exchanged'` (never `'status_changed'`/`'updated'`),
 once on each of the two linked orders — see "Order-to-order exchange" below.
-The current Firestore rules still allow the authorized single account to modify or delete history
-documents, so this is not a revisionssicheres, unveränderliches Audit-Protokoll.
 
 ### Optional per-article inventory tracking
 

@@ -22,6 +22,7 @@ import type { Order } from '../../types/order'
 import { useArticles } from '../articles/hooks'
 import { generateBestelldateien } from '../bestellFormular/generate'
 import { useBestellFormularSettings } from '../bestellFormular/hooks'
+import { checkMatrixCoverage, type MatrixMismatch } from '../bestellFormular/matrixSync'
 import { useEmployees } from '../employees/hooks'
 import { useOrderListSettings } from '../orderListSettings/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
@@ -73,6 +74,7 @@ export function OrderListPage() {
   const [page, setPage] = useState(0)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [bestellConfirmOrders, setBestellConfirmOrders] = useState<Order[] | null>(null)
+  const [missingMatrixArticles, setMissingMatrixArticles] = useState<MatrixMismatch[]>([])
   const [bestellBusy, setBestellBusy] = useState(false)
   const [pendingNameSync, setPendingNameSync] = useState<{ id: string; employeeName: string }[] | null>(null)
   const [pendingPickupLocationSync, setPendingPickupLocationSync] = useState<
@@ -283,6 +285,7 @@ export function OrderListPage() {
       showToast(`Keine Bestellungen mit Status "${bestellTriggerStatus.name}" gefunden.`, 'info')
       return
     }
+    setMissingMatrixArticles(await checkMatrixCoverage(matchingOrders, articles, bestellSettings))
     setBestellConfirmOrders(matchingOrders)
   }
 
@@ -295,6 +298,7 @@ export function OrderListPage() {
     }
     setBestellBusy(false)
     setBestellConfirmOrders(null)
+    setMissingMatrixArticles([])
     showToast(
       `${result.fileCount} Datei(en) erzeugt, ${result.includedOrderIds.length} Bestellung(en)` +
         (bestellTargetStatus ? ` auf "${bestellTargetStatus.name}" gesetzt.` : '.'),
@@ -566,12 +570,23 @@ export function OrderListPage() {
           bestellConfirmOrders
             ? `${bestellConfirmOrders.length} Bestellung(en) mit Status "${bestellTriggerStatus?.name}" werden in ` +
               `${bestellFilePreviewCount(bestellConfirmOrders)} Datei(en) exportiert` +
-              (bestellTargetStatus ? ` und auf "${bestellTargetStatus.name}" gesetzt.` : '.')
+              (bestellTargetStatus ? ` und auf "${bestellTargetStatus.name}" gesetzt.` : '.') +
+              (missingMatrixArticles.length > 0
+                ? `\n\nAchtung: ${missingMatrixArticles.length} Artikel fehlen im Bestellformular ` +
+                  `(Matrix-Tabelle) oder sind dort mit abweichender Bezeichnung hinterlegt und ` +
+                  `erscheinen dort als #N/A bzw. mit veralteter Bezeichnung: ` +
+                  missingMatrixArticles
+                    .map((a) => `${a.articleNumber} – ${a.articleName}${a.reason === 'name_mismatch' ? ' (Bezeichnung weicht ab)' : ''}`)
+                    .join(', ')
+                : '')
             : ''
         }
         confirmLabel="Generieren"
         onConfirm={() => void handleConfirmGenerateBestelldatei()}
-        onCancel={() => setBestellConfirmOrders(null)}
+        onCancel={() => {
+          setBestellConfirmOrders(null)
+          setMissingMatrixArticles([])
+        }}
       />
 
       <ConfirmDialog
