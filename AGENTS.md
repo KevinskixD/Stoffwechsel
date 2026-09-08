@@ -2,6 +2,15 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
+## Git-Versionierung
+
+Jeder Commit und jeder Push erhält einen SemVer-Git-Tag (`vX.Y.Z`). Vor dem Commit wird die
+identische Version in `package.json` und `package-lock.json` gesetzt; der Changelog-Eintrag für
+diese Version wird an den Anfang von `src/features/changelog/changelog.ts` gestellt. Der Tag
+zeigt auf genau den Commit, der diese Version enthält, und wird zusammen mit dem Commit gepusht
+(`git push origin <branch> --follow-tags`). Keine Versionsnummern oder Tags überspringen bzw.
+wiederverwenden.
+
 ## Project
 
 Uniformverwaltung: web tool for uniform ordering/inventory management, replacing an Excel-based
@@ -36,13 +45,6 @@ No test runner is configured in this repo.
    against an `appMeta/seed` marker doc, so two overlapping first-runs (two tabs, a dev
    reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
    is deliberately excluded from backups.
-5. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
-   only through the authenticated `extractDeliveryNote` Firebase Function (`functions/src/index.ts`),
-   so `GEMINI_API_KEY` is a Firebase Secret — **never** a `VITE_*` variable. The Function runs in
-   `europe-west1`, verifies the same authorized Google account as Firestore, and rejects non-PDFs
-   and PDFs over 8 MB before sending them to Gemini. The model is pinned to the `-latest` alias
-   (`gemini-flash-latest`), not a dated version, since dated versions can be deprecated out from
-   under existing API keys without notice.
 
 ## Architecture
 
@@ -59,7 +61,7 @@ These two shapes only cover the master-data CRUD features. The rest are one-off:
 (overview), `reports` (three read-only aggregate views over `orders`), `help` (static page),
 `orderListSettings`/`bestellFormularSettings`/`notificationSettings` (single-document settings,
 same pattern as described below), `bestellFormular` (Excel order-file generation),
-`lieferscheinCheck` (Gemini-based delivery-note matching), `orderHistory` (audit log), and
+`orderHistory` (audit log), and
 `backup` (full-database export/import) — each shaped around what it actually does.
 
 `starterKit` (`src/features/starterKit/`) is a third variant: a settings-list page
@@ -73,6 +75,11 @@ bulk-order page (`StarterKitOrderForm.tsx`) that pre-selects an employee's start
 operator pick one Article (= one size) per category, then calls `createOrder` from
 `orders/api.ts` once per selected category — no new order-mutation/inventory/history logic, purely
 a batch UI over the existing single-order pipeline.
+
+`changelog` (`src/features/changelog/`) is a read-only, static release-notes page. Its
+`CHANGELOG_ENTRIES` list is newest first; the first entry is the current version and is always
+expanded, while older entries can be opened individually. It deliberately uses no Firestore: on
+each release, raise `package.json`'s version and prepend clear user-facing notes to this list.
 
 Cross-cutting reusable pieces live in `src/shared/`:
 - `shared/components` — table, search, pagination, filters, badges used by every list page
@@ -120,7 +127,7 @@ was chosen over cursor pagination, while still keeping live `onSnapshot` updates
 account permitted to sign in. `src/firebase/converters.ts` has one generic `createConverter<T>()`
 used by every collection: it strips `id` on write (Firestore stores it as the doc ID) and hydrates
 `createdAt`/`updatedAt` Timestamps into `Date` on read. Every collection this app owns must be
-individually allow-listed in `firestore.rules` (currently 12 collections/singletons); all other
+individually allow-listed in `firestore.rules` (currently 11 collections/singletons); all other
 paths are denied by the top-level catch-all. `src/features/backup/api.ts` doubles as the
 authoritative list — it enumerates every collection/singleton for export/restore, so a newly added
 collection needs an entry there too, or it's silently excluded from backups.
@@ -308,7 +315,7 @@ try to make these theme-aware.
 `shared/components/ToastProvider.tsx` (`ToastProvider`/`useToast`, mounted in `App.tsx`) shows
 auto-dismissing success/error/info toasts, reusing the badge-color tokens and `bg-surface` so they
 adapt to dark mode automatically. Used by: the "Gespeichert." messages on settings pages, the
-article size backfill, the Lieferschein-Check result, and `OrderListPage`'s bulk-action messages.
+article size backfill, and `OrderListPage`'s bulk-action messages.
 **Deliberately not** migrated to toast: form validation errors, the backup page's structured
 summaries, and other context-bound inline messages — these need to stay visible rather than
 auto-dismiss. When adding a new success/error message: transient, non-actionable messages → toast;

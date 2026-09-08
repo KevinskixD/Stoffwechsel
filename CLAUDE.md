@@ -16,8 +16,6 @@ Authentication (Google Sign-In) restricted to a single authorized account; no mu
   build can fail on typecheck even if Vite itself would succeed
 - `npm run lint` — oxlint (see `.oxlintrc.json`; `react/rules-of-hooks` is an error, not just a warning)
 - `npm run preview` — preview a production build
-- `npm --prefix functions run build` — compile Firebase Functions before deployment
-- `npm --prefix functions run lint` — typecheck the Firebase Functions
 
 No test runner is configured in this repo.
 
@@ -38,18 +36,6 @@ No test runner is configured in this repo.
    against an `appMeta/seed` marker doc, so two overlapping first-runs (two tabs, a dev
    reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
    is deliberately excluded from backups.
-5. The **Lieferschein-Check** feature (`src/features/lieferscheinCheck/`) calls the Gemini API
-   only through the authenticated `extractDeliveryNote` Firebase Function (`functions/src/index.ts`).
-   Set `GEMINI_API_KEY` as a Firebase Secret — **never** a `VITE_*` variable — then deploy with:
-   ```
-   firebase functions:secrets:set GEMINI_API_KEY --project <project-id>
-   firebase deploy --only functions --project <project-id>
-   ```
-   Cloud Functions and Secret Manager require the Firebase Blaze plan. The Function runs in
-   `europe-west1`, verifies the same authorized Google account as Firestore, and rejects non-PDFs
-   and PDFs over 8 MB before sending them to Gemini. The model is pinned to the `-latest` alias
-   (`gemini-flash-latest`), not a dated version, since dated versions can be deprecated out from
-   under existing API keys without notice.
 
 ## Architecture
 
@@ -66,7 +52,7 @@ These two shapes only cover the master-data CRUD features. The rest are one-off:
 (overview), `reports` (three read-only aggregate views over `orders`), `help` (static page),
 `orderListSettings`/`bestellFormularSettings`/`notificationSettings` (single-document settings,
 same pattern as described below), `bestellFormular` (Excel order-file generation),
-`lieferscheinCheck` (Gemini-based delivery-note matching), `orderHistory` (audit log), and
+`orderHistory` (audit log), and
 `backup` (full-database export/import) — each shaped around what it actually does.
 
 `starterKit` (`src/features/starterKit/`) is a third variant: a settings-list page
@@ -80,10 +66,6 @@ bulk-order page (`StarterKitOrderForm.tsx`) that pre-selects an employee's start
 operator pick one Article (= one size) per category, then calls `createOrder` from
 `orders/api.ts` once per selected category — no new order-mutation/inventory/history logic, purely
 a batch UI over the existing single-order pipeline.
-
-`functions/` contains the TypeScript Firebase Functions. It currently houses the EU-regional,
-server-side Gemini extraction call for Lieferschein-Check; `firebase.json` builds this package
-automatically before a Functions deployment.
 
 Cross-cutting reusable pieces live in `src/shared/`:
 - `shared/components` — table, search, pagination, filters, badges used by every list page
@@ -322,7 +304,7 @@ try to make these theme-aware.
 `shared/components/ToastProvider.tsx` (`ToastProvider`/`useToast`, mounted in `App.tsx`) shows
 auto-dismissing success/error/info toasts, reusing the badge-color tokens and `bg-surface` so they
 adapt to dark mode automatically. Used by: the "Gespeichert." messages on settings pages, the
-article size backfill, the Lieferschein-Check result, and `OrderListPage`'s bulk-action messages.
+article size backfill, and `OrderListPage`'s bulk-action messages.
 **Deliberately not** migrated to toast: form validation errors, the backup page's structured
 summaries, and other context-bound inline messages — these need to stay visible rather than
 auto-dismiss. When adding a new success/error message: transient, non-actionable messages → toast;

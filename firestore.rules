@@ -44,9 +44,6 @@ service cloud.firestore {
     match /orderListSettings/{id} {
       allow read, write: if isAuthorized();
     }
-    match /lieferscheinChecks/{id} {
-      allow read, write: if isAuthorized();
-    }
     match /appMeta/{id} {
       allow read, write: if isAuthorized();
     }

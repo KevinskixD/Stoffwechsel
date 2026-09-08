@@ -8,7 +8,6 @@ import {
   ArticleIcon,
   ChevronDownIcon,
   DashboardIcon,
-  DeliveryIcon,
   GearIcon,
   HelpIcon,
   HistoryIcon,
@@ -41,14 +40,7 @@ const NAV_ITEMS: NavItemDef[] = [
     match: (path) =>
       path.startsWith('/orders') &&
       !path.startsWith('/orders/pickup-ready') &&
-      !path.startsWith('/orders/lieferschein-check') &&
       !path.startsWith('/orders/history'),
-  },
-  {
-    to: '/orders/lieferschein-check',
-    label: 'Lieferschein prüfen',
-    Icon: DeliveryIcon,
-    match: (path) => path.startsWith('/orders/lieferschein-check'),
   },
   {
     to: '/orders/pickup-ready',
@@ -117,6 +109,13 @@ const SETTINGS_ITEMS: NavItemDef[] = [
   },
   { to: '/help', label: 'Hilfe', Icon: HelpIcon, match: (path) => path.startsWith('/help') },
 ]
+
+const CHANGELOG_ITEM: NavItemDef = {
+  to: '/versionshistorie',
+  label: 'Versionshistorie',
+  Icon: HistoryIcon,
+  match: (path) => path.startsWith('/versionshistorie'),
+}
 
 const isSettingsPath = (path: string) => SETTINGS_ITEMS.some((item) => item.match(path))
 
@@ -189,6 +188,13 @@ export function Sidebar() {
         </nav>
 
         <div className="flex flex-col gap-0.5 border-t border-black/[0.06] p-3 pb-4">
+          <NavRow
+            to={CHANGELOG_ITEM.to}
+            label={CHANGELOG_ITEM.label}
+            Icon={CHANGELOG_ITEM.Icon}
+            active={CHANGELOG_ITEM.match(pathname)}
+          />
+
           <button
             type="button"
             onClick={() => setSettingsOpen((open) => !open)}

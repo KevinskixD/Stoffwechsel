@@ -29,17 +29,7 @@ kein Multi-User-Betrieb — siehe Sicherheitshinweis unten.
    firebase login
    firebase deploy --only firestore:rules --project <dein-projekt-id>
    ```
-7. Für den Lieferschein-Check die serverseitige Function einrichten. Der Gemini-Key darf **nicht**
-   in `.env.local` stehen, weil alle `VITE_*`-Variablen im Browser veröffentlicht würden. Einen
-   neuen oder rotierten Key als Firebase Secret setzen und die Function deployen:
-   ```
-   firebase functions:secrets:set GEMINI_API_KEY --project <dein-projekt-id>
-   firebase deploy --only functions --project <dein-projekt-id>
-   ```
-   Die Function läuft in `europe-west1`, akzeptiert nur das freigegebene, verifizierte
-   Google-Konto und verarbeitet ausschließlich PDFs bis 8 MB. Ein zuvor als
-   `VITE_GEMINI_API_KEY` verwendeter Key sollte in Google AI Studio umgehend rotiert werden.
-8. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
+7. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
 
 Die sieben Standard-Bestellstatus ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
 "Abgeholt", "Umtausch", "Abgeschlossen") werden beim ersten Start automatisch in Firestore
@@ -54,10 +44,6 @@ eine echte Zugriffskontrolle, nicht nur eine clientseitige Prüfung. Wichtig: di
 muss in `firestore.rules` und `src/firebase/config.ts` exakt übereinstimmen, sonst driften
 Client-Gate und Server-Regel auseinander.
 
-Der Lieferschein-Check sendet das ausgewählte PDF über eine authentifizierte Firebase Function an
-Gemini. Der dafür erforderliche Key liegt ausschließlich in Firebase Secret Manager; er ist nicht
-Teil des ausgelieferten Browser-Bundles.
-
 ## Projektstruktur
 
 - `src/features/employees`, `src/features/articles`, `src/features/orderStatuses`,
@@ -68,6 +54,19 @@ Teil des ausgelieferten Browser-Bundles.
 - `src/shared/components`, `src/shared/hooks`, `src/shared/utils` — generische Bausteine
   (Tabelle, Suche, Pagination, Firestore-Query-Hook, Datums-/Suchformatierung).
 - `src/firebase` — Firebase-Init (inkl. Auth), Firestore-Converter, Seed-Logik für Bestellstatus.
+
+## Versionshistorie
+
+Unter „Versionshistorie" direkt über „Einstellungen" zeigt die App die Release-Notizen. Die
+aktuelle Version steht immer oben; ältere Versionen lassen sich einzeln auf- und zuklappen.
+Die Einträge liegen statisch in `src/features/changelog/changelog.ts` und benötigen weder
+Firestore noch eine Netzwerkverbindung.
+
+Bei jedem Commit und Push die Version in `package.json` (und `package-lock.json`) erhöhen, einen
+neuen Eintrag am Anfang von `CHANGELOG_ENTRIES` ergänzen und den Commit mit einem passenden
+SemVer-Tag (`vX.Y.Z`) versehen. Der Tag zeigt auf den Commit dieser Version und wird mit
+`git push origin <branch> --follow-tags` übertragen. Die Notizen sollen die Änderungen aus
+Anwendersicht beschreiben; der erste Eintrag der Liste gilt als aktuelle Version.
 
 ## Bekannte Einschränkung
 

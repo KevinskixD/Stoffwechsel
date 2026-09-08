@@ -12,7 +12,6 @@ const SUMMARY_LABELS: { key: keyof BackupSummary; label: string }[] = [
   { key: 'orders', label: 'Bestellungen' },
   { key: 'orderHistory', label: 'Verlaufseinträge' },
   { key: 'pickupLocations', label: 'Abholorte' },
-  { key: 'lieferscheinChecks', label: 'Lieferschein-Prüfungen' },
   { key: 'starterKitCategories', label: 'Basisausrüstung-Kategorien' },
 ]
 

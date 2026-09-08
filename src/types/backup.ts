@@ -1,7 +1,6 @@
 import type { Article } from './article'
 import type { BestellFormularSettings } from './bestellFormularSettings'
 import type { Employee } from './employee'
-import type { LieferscheinCheckRecord } from './lieferscheinCheck'
 import type { NotificationSettings } from './notificationSettings'
 import type { Order } from './order'
 import type { OrderHistoryEntry } from './orderHistory'
@@ -10,7 +9,7 @@ import type { OrderStatus } from './orderStatus'
 import type { PickupLocation } from './pickupLocation'
 import type { StarterKitCategory } from './starterKit'
 
-export const BACKUP_SCHEMA_VERSION = 1
+export const BACKUP_SCHEMA_VERSION = 2
 
 /**
  * A full point-in-time snapshot of every Firestore collection/document this app owns
@@ -29,7 +28,6 @@ export interface BackupData {
     orders: Order[]
     orderHistory: OrderHistoryEntry[]
     pickupLocations: PickupLocation[]
-    lieferscheinChecks: LieferscheinCheckRecord[]
     starterKitCategories: StarterKitCategory[]
   }
   singletons: {
@@ -46,7 +44,6 @@ export interface BackupSummary {
   orders: number
   orderHistory: number
   pickupLocations: number
-  lieferscheinChecks: number
   starterKitCategories: number
 }
 
@@ -58,7 +55,6 @@ export function summarizeBackup(data: BackupData): BackupSummary {
     orders: data.collections.orders.length,
     orderHistory: data.collections.orderHistory.length,
     pickupLocations: data.collections.pickupLocations.length,
-    lieferscheinChecks: data.collections.lieferscheinChecks.length,
     starterKitCategories: data.collections.starterKitCategories.length,
   }
 }

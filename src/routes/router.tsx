@@ -4,12 +4,12 @@ import { ArticleForm } from '../features/articles/ArticleForm'
 import { ArticleListPage } from '../features/articles/ArticleListPage'
 import { BackupSettingsPage } from '../features/backup/BackupSettingsPage'
 import { BestellFormularSettingsPage } from '../features/bestellFormular/BestellFormularSettingsPage'
+import { ChangelogPage } from '../features/changelog/ChangelogPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { employeeImportConfig } from '../features/employees/employeeImportConfig'
 import { EmployeeForm } from '../features/employees/EmployeeForm'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage'
 import { HelpPage } from '../features/help/HelpPage'
-import { LieferscheinCheckPage } from '../features/lieferscheinCheck/LieferscheinCheckPage'
 import { NotificationSettingsPage } from '../features/notificationSettings/NotificationSettingsPage'
 import { OrderHistoryPage } from '../features/orderHistory/OrderHistoryPage'
 import { OrderListSettingsPage } from '../features/orderListSettings/OrderListSettingsPage'
@@ -35,10 +35,10 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/help" element={<HelpPage />} />
+      <Route path="/versionshistorie" element={<ChangelogPage />} />
 
       <Route path="/orders" element={<OrderListPage />} />
       <Route path="/orders/pickup-ready" element={<PickupReadyPage />} />
-      <Route path="/orders/lieferschein-check" element={<LieferscheinCheckPage />} />
       <Route path="/orders/history" element={<OrderHistoryPage />} />
       <Route path="/orders/new" element={<OrderForm />} />
       <Route path="/orders/starter-kit" element={<StarterKitOrderForm />} />

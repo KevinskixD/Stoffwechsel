@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { FormField, formInputClass } from '../../shared/components/FormField'
 import { PageHeader } from '../../shared/components/PageHeader'
 import { useToast } from '../../shared/components/ToastProvider'
-import { fileToBase64 } from '../../shared/utils/file'
+import { base64ToArrayBuffer, downloadBlob, fileToBase64 } from '../../shared/utils/file'
 import { emptyTableMapping, type TableMapping } from '../../types/bestellFormularSettings'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { saveBestellFormularSettings } from './api'
@@ -188,6 +188,14 @@ export function BestellFormularSettingsPage() {
     showToast('Gespeichert.', 'success')
   }
 
+  function handleDownloadTemplate() {
+    if (!settings.templateBase64) return
+    const blob = new Blob([base64ToArrayBuffer(settings.templateBase64)], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    downloadBlob(blob, settings.templateFileName || 'Bestellformular-Vorlage.xlsx')
+  }
+
   if (loading) return <p className="p-6 text-gray-400">Lädt…</p>
 
   return (
@@ -206,7 +214,18 @@ export function BestellFormularSettingsPage() {
             className="block text-[13px] text-black/65 file:mr-3.5 file:rounded-lg file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-[13px] file:font-bold file:text-brand hover:file:bg-brand/15"
           />
           {templateFileName ? (
-            <p className="mt-1.5 text-[13px] text-black/45">Aktuell gespeichert: {templateFileName}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+              <p className="text-black/45">Aktuell gespeichert: {templateFileName}</p>
+              {settings.templateBase64 ? (
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="font-bold text-brand hover:text-brand-dark"
+                >
+                  Vorlage herunterladen
+                </button>
+              ) : null}
+            </div>
           ) : (
             <p className="mt-1.5 text-[13px] text-black/45">Noch keine Vorlage hochgeladen.</p>
           )}

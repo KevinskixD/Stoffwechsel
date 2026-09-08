@@ -30,7 +30,7 @@ const ordersCollection = collection(db, 'orders')
 /**
  * Statuses have no reserved id/flag (they're freely renameable/mergeable — see orderStatuses/api.ts),
  * so "the order was actually placed" is identified by this literal name, same convention already used
- * by DashboardPage/LieferscheinCheckPage/BestellFormularSettingsPage's default-suggest logic.
+ * by DashboardPage/BestellFormularSettingsPage's default-suggest logic.
  */
 const ORDERED_STATUS_NAME = 'Bestellt'
 

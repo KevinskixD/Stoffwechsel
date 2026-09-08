@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,8 +16,6 @@ export const isFirebaseConfigured = Object.values(firebaseConfig).every((value) 
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-// Keep callable Gemini processing in an EU region, close to the Austrian operator.
-export const functions = getFunctions(app, 'europe-west1')
 export const googleProvider = new GoogleAuthProvider()
 
 // Must match the email in the isAuthorized() function in firestore.rules exactly, or the

@@ -5,7 +5,6 @@ import type { Article } from '../../types/article'
 import { BACKUP_SCHEMA_VERSION, type BackupData } from '../../types/backup'
 import { BESTELL_FORMULAR_SETTINGS_DOC_ID, type BestellFormularSettings } from '../../types/bestellFormularSettings'
 import type { Employee } from '../../types/employee'
-import type { LieferscheinCheckRecord } from '../../types/lieferscheinCheck'
 import { NOTIFICATION_SETTINGS_DOC_ID, type NotificationSettings } from '../../types/notificationSettings'
 import type { Order } from '../../types/order'
 import type { OrderHistoryEntry } from '../../types/orderHistory'
@@ -16,10 +15,41 @@ import type { StarterKitCategory } from '../../types/starterKit'
 
 const BATCH_SIZE = 500
 
+const COLLECTION_KEYS = [
+  'employees',
+  'articles',
+  'orderStatuses',
+  'orders',
+  'orderHistory',
+  'pickupLocations',
+  'starterKitCategories',
+] as const
+
+function normalizeCollections(collections: unknown): BackupData['collections'] {
+  if (typeof collections !== 'object' || collections === null) {
+    throw new Error('Datei ist kein gültiges Backup dieser Anwendung.')
+  }
+
+  const source = collections as Record<string, unknown>
+  if (COLLECTION_KEYS.some((key) => !Array.isArray(source[key]))) {
+    throw new Error('Datei ist kein gültiges Backup dieser Anwendung.')
+  }
+
+  return {
+    employees: source.employees as BackupData['collections']['employees'],
+    articles: source.articles as BackupData['collections']['articles'],
+    orderStatuses: source.orderStatuses as BackupData['collections']['orderStatuses'],
+    orders: source.orders as BackupData['collections']['orders'],
+    orderHistory: source.orderHistory as BackupData['collections']['orderHistory'],
+    pickupLocations: source.pickupLocations as BackupData['collections']['pickupLocations'],
+    starterKitCategories: source.starterKitCategories as BackupData['collections']['starterKitCategories'],
+  }
+}
+
 /**
  * Only createdAt/updatedAt are ever Firestore Timestamps across these types - converting just
  * those two (rather than reusing createConverter<T>()) avoids createConverter's side effect of
- * inventing an `updatedAt: new Date()` for docs that never had one (orderHistory, lieferscheinChecks),
+ * inventing an `updatedAt: new Date()` for docs that never had one (orderHistory),
  * which would pollute every export with a fake, ever-changing field.
  */
 function docToRecord<T>(id: string, data: Record<string, unknown>): T {
@@ -40,7 +70,7 @@ async function fetchSingleton<T>(collectionName: string, docId: string): Promise
 }
 
 export async function exportBackupData(): Promise<BackupData> {
-  const [employees, articles, orderStatuses, orders, orderHistory, pickupLocations, lieferscheinChecks, starterKitCategories] =
+  const [employees, articles, orderStatuses, orders, orderHistory, pickupLocations, starterKitCategories] =
     await Promise.all([
       fetchCollection<Employee>('employees'),
       fetchCollection<Article>('articles'),
@@ -48,7 +78,6 @@ export async function exportBackupData(): Promise<BackupData> {
       fetchCollection<Order>('orders'),
       fetchCollection<OrderHistoryEntry>('orderHistory'),
       fetchCollection<PickupLocation>('pickupLocations'),
-      fetchCollection<LieferscheinCheckRecord>('lieferscheinChecks'),
       fetchCollection<StarterKitCategory>('starterKitCategories'),
     ])
   const [notificationSettings, bestellFormularSettings, orderListSettings] = await Promise.all([
@@ -67,7 +96,6 @@ export async function exportBackupData(): Promise<BackupData> {
       orders,
       orderHistory,
       pickupLocations,
-      lieferscheinChecks,
       starterKitCategories,
     },
     singletons: { notificationSettings, bestellFormularSettings, orderListSettings },
@@ -87,17 +115,23 @@ export async function parseBackupFile(file: File): Promise<BackupData> {
   } catch {
     throw new Error('Datei ist kein gültiges JSON.')
   }
-  const candidate = parsed as Partial<BackupData> | null
+  const candidate = parsed as (Partial<BackupData> & { schemaVersion?: unknown; collections?: unknown }) | null
   if (
     typeof candidate !== 'object' ||
     candidate === null ||
-    candidate.schemaVersion !== BACKUP_SCHEMA_VERSION ||
-    typeof candidate.collections !== 'object' ||
-    candidate.collections === null
+    (candidate.schemaVersion !== 1 && candidate.schemaVersion !== BACKUP_SCHEMA_VERSION) ||
+    typeof candidate.exportedAt !== 'string' ||
+    typeof candidate.singletons !== 'object' ||
+    candidate.singletons === null
   ) {
     throw new Error('Datei ist kein gültiges Backup dieser Anwendung.')
   }
-  return candidate as BackupData
+  return {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: candidate.exportedAt,
+    collections: normalizeCollections(candidate.collections),
+    singletons: candidate.singletons as BackupData['singletons'],
+  }
 }
 
 async function deleteAllDocsInCollection(collectionName: string): Promise<void> {
@@ -146,7 +180,6 @@ export const BACKUP_RESTORE_STEP_LABELS = [
   'Bestellverlauf',
   'Abholorte',
   'Basisausrüstung-Kategorien',
-  'Lieferschein-Prüfungen',
   'Benachrichtigungseinstellungen',
   'Bestellformular-Einstellungen',
   'Aktionsbutton-Einstellungen',
@@ -166,7 +199,6 @@ export async function restoreBackupData(data: BackupData, onProgress?: (label: s
     () => restoreCollection('orderHistory', data.collections.orderHistory),
     () => restoreCollection('pickupLocations', data.collections.pickupLocations),
     () => restoreCollection('starterKitCategories', data.collections.starterKitCategories),
-    () => restoreCollection('lieferscheinChecks', data.collections.lieferscheinChecks),
     () => restoreSingleton('notificationSettings', NOTIFICATION_SETTINGS_DOC_ID, data.singletons.notificationSettings),
     () =>
       restoreSingleton('bestellFormularSettings', BESTELL_FORMULAR_SETTINGS_DOC_ID, data.singletons.bestellFormularSettings),
