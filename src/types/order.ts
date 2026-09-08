@@ -5,6 +5,8 @@ export interface Order {
   articleId: string
   articleName: string
   articleNumber: string
+  /** Optional note attached to this individual order. */
+  comment: string
   /** Snapshot of Article.size at order time; '' if the article had none. */
   articleSize: string
   /** Snapshot of Article.pickupLocationName at order time; '' if the article had none. */
@@ -32,6 +34,7 @@ export type OrderInput = {
   articleId: string
   articleName: string
   articleNumber: string
+  comment: string
   articleSize: string
   pickupLocationName: string
   quantity: number

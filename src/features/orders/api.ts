@@ -38,11 +38,13 @@ const ORDERED_STATUS_NAME = 'Bestellt'
 const IN_QUERY_CHUNK_SIZE = 30
 
 function buildCreatedChanges(input: OrderInput): OrderHistoryChange[] {
-  return [
+  const changes: OrderHistoryChange[] = [
     { field: 'quantity', label: 'Menge', from: '', to: String(input.quantity) },
     { field: 'status', label: 'Status', from: '', to: input.status },
     { field: 'orderDate', label: 'Datum', from: '', to: formatDateDe(input.orderDate) },
   ]
+  if (input.comment) changes.push({ field: 'comment', label: 'Kommentar', from: '', to: input.comment })
+  return changes
 }
 
 /** Diffs a full-form edit against the previous document — only changed fields are logged. */
@@ -72,6 +74,9 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
       from: formatDateDe(before.orderDate),
       to: formatDateDe(after.orderDate),
     })
+  }
+  if ((before.comment ?? '') !== after.comment) {
+    changes.push({ field: 'comment', label: 'Kommentar', from: before.comment ?? '', to: after.comment })
   }
   return changes
 }
@@ -165,6 +170,7 @@ export async function exchangeOrder(input: ExchangeOrderInput): Promise<string> 
     articleId: input.newArticleId,
     articleName: input.newArticleName,
     articleNumber: input.newArticleNumber,
+    comment: '',
     articleSize: input.newArticleSize,
     pickupLocationName: input.newPickupLocationName,
     quantity: before.quantity,
@@ -308,6 +314,23 @@ export async function updateOrderDate(id: string, orderDate: string): Promise<vo
     articleName: before.articleName,
     action: 'updated',
     changes: [{ field: 'orderDate', label: 'Datum', from: formatDateDe(before.orderDate), to: formatDateDe(orderDate) }],
+  })
+}
+
+/** Updates an order note without touching its status or any of its denormalized article data. */
+export async function updateOrderComment(id: string, comment: string): Promise<void> {
+  const before = await getOrder(id)
+  await updateDoc(doc(db, 'orders', id), {
+    comment,
+    updatedAt: serverTimestamp(),
+  })
+  if (!before || (before.comment ?? '') === comment) return
+  await logOrderHistory({
+    orderId: id,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'updated',
+    changes: [{ field: 'comment', label: 'Kommentar', from: before.comment ?? '', to: comment }],
   })
 }
 

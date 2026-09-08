@@ -184,6 +184,7 @@ export const orderImportConfig: ImportEntityConfig<Order, OrderImportPrefetch> =
     articleId: data.articleId as string,
     articleName: data.articleName as string,
     articleNumber: data.articleNumber as string,
+    comment: '',
     articleSize: (data.articleSize as string | undefined) ?? '',
     pickupLocationName: (data.pickupLocationName as string | undefined) ?? '',
     quantity: data.quantity as number,

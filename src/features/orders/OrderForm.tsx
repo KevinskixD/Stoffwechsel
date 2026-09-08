@@ -18,6 +18,7 @@ interface FormState {
   articleId: string
   articleName: string
   articleNumber: string
+  comment: string
   articleSize: string
   pickupLocationName: string
   quantity: string
@@ -36,6 +37,7 @@ const emptyForm: FormState = {
   articleId: '',
   articleName: '',
   articleNumber: '',
+  comment: '',
   articleSize: '',
   pickupLocationName: '',
   quantity: '1',
@@ -84,6 +86,7 @@ export function OrderForm() {
           articleId: order.articleId,
           articleName: order.articleName,
           articleNumber: order.articleNumber,
+          comment: order.comment ?? '',
           articleSize: order.articleSize ?? '',
           pickupLocationName: order.pickupLocationName ?? '',
           quantity: String(order.quantity),
@@ -182,6 +185,7 @@ export function OrderForm() {
       articleId: form.articleId,
       articleName: form.articleName,
       articleNumber: form.articleNumber,
+      comment: form.comment.trim(),
       articleSize: form.articleSize,
       pickupLocationName: form.pickupLocationName,
       quantity,
@@ -253,6 +257,16 @@ export function OrderForm() {
               )
             })()
           ) : null}
+        </FormField>
+
+        <FormField label="Kommentar">
+          <textarea
+            rows={3}
+            value={form.comment}
+            onChange={(e) => setForm({ ...form, comment: e.target.value })}
+            placeholder="Optionaler Kommentar zur Bestellung…"
+            className={`${formInputClass} resize-y`}
+          />
         </FormField>
 
         <FormField label="Menge">

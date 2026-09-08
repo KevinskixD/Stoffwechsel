@@ -109,6 +109,7 @@ export function StarterKitOrderForm() {
           articleId: line.articleId,
           articleName: line.articleName,
           articleNumber: line.articleNumber,
+          comment: '',
           articleSize: line.articleSize,
           pickupLocationName: line.pickupLocationName,
           quantity: 1,

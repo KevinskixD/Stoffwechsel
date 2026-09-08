@@ -33,6 +33,7 @@ import {
   deleteOrders,
   ordersQuery,
   updateOrderArticleNames,
+  updateOrderComment,
   updateOrderDate,
   updateOrderEmployeeNames,
   updateOrderPickupLocationNames,
@@ -90,6 +91,7 @@ export function OrderListPage() {
     resolve: (ok: boolean) => void
   } | null>(null)
   const [exchangingOrder, setExchangingOrder] = useState<Order | null>(null)
+  const [commentEditor, setCommentEditor] = useState<{ orderId: string; value: string } | null>(null)
 
   const { data: rawOrders, loading } = useOrders({
     employeeId: employeeId || undefined,
@@ -140,6 +142,16 @@ export function OrderListPage() {
     await updateOrderQuantity(order.id, quantity)
   }
 
+  async function saveComment() {
+    if (!commentEditor) return
+    try {
+      await updateOrderComment(commentEditor.orderId, commentEditor.value.trim())
+      setCommentEditor(null)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Kommentar konnte nicht gespeichert werden.', 'error')
+    }
+  }
+
   const columns: DataTableColumn<Order>[] = [
     selection.column,
     {
@@ -163,6 +175,34 @@ export function OrderListPage() {
       render: (o) => (
         <div>
           {articleDisplayLabel(o)}
+          {commentEditor?.orderId === o.id ? (
+            <div className="mt-1.5 max-w-[34rem]">
+              <textarea
+                autoFocus
+                rows={2}
+                value={commentEditor.value}
+                onChange={(e) => setCommentEditor({ ...commentEditor, value: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setCommentEditor(null)
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void saveComment()
+                }}
+                aria-label={`Kommentar für ${articleDisplayLabel(o)}`}
+                className="w-full resize-y rounded-lg border border-black/[0.14] px-2.5 py-1.5 text-xs leading-4 text-gray-900 focus:border-brand focus:outline-none"
+              />
+              <div className="mt-1 flex gap-3 text-xs font-semibold">
+                <button type="button" onClick={() => void saveComment()} className="text-brand hover:underline">
+                  Speichern
+                </button>
+                <button type="button" onClick={() => setCommentEditor(null)} className="text-black/45 hover:underline">
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          ) : o.comment ? (
+            <p title={o.comment} className="mt-0.5 max-w-[34rem] line-clamp-2 text-xs leading-4 text-black/55">
+              {o.comment}
+            </p>
+          ) : null}
           {o.exchangedToOrderId ? (
             <Link
               to={`/orders/${o.exchangedToOrderId}/edit`}
@@ -231,6 +271,13 @@ export function OrderListPage() {
       header: '',
       render: (o) => (
         <div className="flex gap-4 text-[13px] font-semibold">
+          <button
+            type="button"
+            onClick={() => setCommentEditor({ orderId: o.id, value: o.comment ?? '' })}
+            className="text-black/45 hover:text-brand hover:underline"
+          >
+            Kommentar
+          </button>
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
