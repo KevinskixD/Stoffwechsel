@@ -199,7 +199,10 @@ export function OrderListPage() {
               </div>
             </div>
           ) : o.comment ? (
-            <p title={o.comment} className="mt-0.5 max-w-[34rem] line-clamp-2 text-xs leading-4 text-black/55">
+            <p
+              title={o.comment}
+              className="mt-0.5 max-w-[34rem] line-clamp-2 whitespace-pre-line text-xs leading-4 text-black/55"
+            >
               {o.comment}
             </p>
           ) : null}

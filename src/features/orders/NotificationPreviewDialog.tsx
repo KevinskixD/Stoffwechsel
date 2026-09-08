@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { NotificationLineData } from '../../shared/utils/notificationTemplate'
 import { renderNotificationText } from '../../shared/utils/notificationTemplate'
-import { updateOrdersStatus } from './api'
+import { formatDateDe, todayISO } from '../../shared/utils/date'
+import { markOrdersAsNotified } from './api'
 
 interface NotificationPreviewDialogProps {
   open: boolean
@@ -82,7 +83,8 @@ export function NotificationPreviewDialog({
               disabled={!targetStatusId}
               title={!targetStatusId ? 'Zielstatus in den Einstellungen konfigurieren' : undefined}
               onClick={async () => {
-                await updateOrdersStatus(orderIds, targetStatusId, targetStatusName)
+                const notificationNote = `${employeeName} am ${formatDateDe(todayISO())} über Abholung informiert.`
+                await markOrdersAsNotified(orderIds, targetStatusId, targetStatusName, notificationNote)
                 onConfirmed()
               }}
               className="rounded-lg bg-brand px-4.5 py-2.5 text-[13.5px] font-bold text-white hover:bg-brand-dark disabled:opacity-50"

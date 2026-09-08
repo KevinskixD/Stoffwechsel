@@ -81,7 +81,10 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
   return changes
 }
 
-type OrderSnapshotFields = Pick<Order, 'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate'>
+type OrderSnapshotFields = Pick<
+  Order,
+  'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate' | 'comment'
+>
 
 /** Fetches the current status/employeeName/articleName/articleId/quantity/orderDate for each id — used to diff bulk status writes and restore inventory on bulk delete. */
 async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, OrderSnapshotFields>> {
@@ -99,6 +102,7 @@ async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, Orde
         articleId: data.articleId,
         quantity: data.quantity,
         orderDate: data.orderDate,
+        comment: data.comment ?? '',
       })
     })
   }
@@ -387,6 +391,53 @@ export async function updateOrdersStatus(ids: string[], statusId: string, status
         employeeName: snap.employeeName,
         articleName: snap.articleName,
         action: 'status_changed',
+        changes,
+      })
+    }),
+  )
+}
+
+/**
+ * Completes the pickup-notification action: changes the target status and appends the dated
+ * notification note to every affected order without discarding an existing comment.
+ */
+export async function markOrdersAsNotified(
+  ids: string[],
+  statusId: string,
+  status: string,
+  notificationNote: string,
+): Promise<void> {
+  const before = await fetchOrderSnapshotsByIds(ids)
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const chunk = ids.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach((id) => {
+      const previousComment = before.get(id)?.comment ?? ''
+      const comment = previousComment ? `${notificationNote}\n${previousComment}` : notificationNote
+      batch.update(doc(db, 'orders', id), { statusId, status, comment, updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+
+  await Promise.all(
+    ids.map((id) => {
+      const snap = before.get(id)
+      if (!snap) return Promise.resolve()
+      const changes: OrderHistoryChange[] = []
+      if (snap.status !== status) {
+        changes.push({ field: 'status', label: 'Status', from: snap.status, to: status })
+      }
+      changes.push({
+        field: 'comment',
+        label: 'Kommentar',
+        from: snap.comment,
+        to: snap.comment ? `${notificationNote}\n${snap.comment}` : notificationNote,
+      })
+      return logOrderHistory({
+        orderId: id,
+        employeeName: snap.employeeName,
+        articleName: snap.articleName,
+        action: snap.status === status ? 'updated' : 'status_changed',
         changes,
       })
     }),
