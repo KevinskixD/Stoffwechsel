@@ -81,9 +81,9 @@ export function ChangelogPage() {
                       {entry.changes.map((change, changeIndex) => {
                         const config = CHANGE_TYPE_CONFIG[change.type]
                         return (
-                          <li key={`${entry.version}-${changeIndex}`} className="flex items-start gap-2.5 text-[13.5px] leading-5 text-black/70">
+                          <li key={`${entry.version}-${changeIndex}`} className="flex items-center gap-2.5 text-[13.5px] leading-5 text-black/70">
                             <span
-                              className="mt-0.5 flex w-[94px] shrink-0 justify-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+                              className="flex w-[94px] shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-bold"
                               style={{ backgroundColor: config.background, color: config.color }}
                             >
                               {config.label}
