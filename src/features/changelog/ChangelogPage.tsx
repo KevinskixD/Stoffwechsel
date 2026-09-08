@@ -26,23 +26,25 @@ export function ChangelogPage() {
         subtitle="Neuerungen, Verbesserungen und Fehlerbehebungen der Uniformverwaltung"
       />
 
-      <div className="relative max-w-3xl pl-7">
-        <div className="absolute top-2.5 bottom-2.5 left-[9px] w-px bg-black/[0.10]" />
-
+      <div className="max-w-3xl pl-8">
         <div className="space-y-3">
           {CHANGELOG_ENTRIES.map((entry, index) => {
             const isCurrent = index === 0
             const isExpanded = isCurrent || Boolean(expanded[entry.version])
             const toggle = () => setExpanded((previous) => ({ ...previous, [entry.version]: !previous[entry.version] }))
+            const hasFollowingEntry = index < CHANGELOG_ENTRIES.length - 1
 
             return (
               <section key={entry.version} className="relative">
+                {hasFollowingEntry ? (
+                  <span aria-hidden="true" className="absolute top-8 -bottom-11 -left-6 w-px bg-black/[0.10]" />
+                ) : null}
                 <span
                   aria-hidden="true"
-                  className={`absolute top-5 -left-7 rounded-full ${
+                  className={`absolute rounded-full ${
                     isCurrent
-                      ? 'h-3.5 w-3.5 bg-brand ring-4 ring-brand-tint'
-                      : 'h-2.5 w-2.5 translate-x-0.5 bg-black/25'
+                      ? 'top-[25px] -left-[31px] h-3.5 w-3.5 bg-brand ring-4 ring-brand-tint'
+                      : 'top-[27px] -left-[29px] h-2.5 w-2.5 bg-black/25'
                   }`}
                 />
 
@@ -51,7 +53,7 @@ export function ChangelogPage() {
                     type="button"
                     onClick={isCurrent ? undefined : toggle}
                     disabled={isCurrent}
-                    className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-4 text-left ${
+                    className={`flex min-h-16 w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left ${
                       isCurrent ? 'cursor-default' : 'cursor-pointer hover:bg-brand-tint/45'
                     }`}
                     aria-expanded={isCurrent ? true : isExpanded}
@@ -81,7 +83,7 @@ export function ChangelogPage() {
                         return (
                           <li key={`${entry.version}-${changeIndex}`} className="flex items-start gap-2.5 text-[13.5px] leading-5 text-black/70">
                             <span
-                              className="mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                              className="mt-0.5 flex w-[94px] shrink-0 justify-center rounded-full px-2.5 py-1 text-[11px] font-bold"
                               style={{ backgroundColor: config.background, color: config.color }}
                             >
                               {config.label}
