@@ -27,13 +27,6 @@ import { adjustArticleInventory } from '../articles/api'
 const orderConverter = createConverter<Order>()
 const ordersCollection = collection(db, 'orders')
 
-/**
- * Statuses have no reserved id/flag (they're freely renameable/mergeable — see orderStatuses/api.ts),
- * so "the order was actually placed" is identified by this literal name, same convention already used
- * by DashboardPage/BestellFormularSettingsPage's default-suggest logic.
- */
-const ORDERED_STATUS_NAME = 'Bestellt'
-
 /** Firestore 'in' queries accept at most 30 values per query. */
 const IN_QUERY_CHUNK_SIZE = 30
 
@@ -83,7 +76,7 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
 
 type OrderSnapshotFields = Pick<
   Order,
-  'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate' | 'comment'
+  'statusId' | 'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate' | 'comment'
 >
 
 /** Fetches the current status/employeeName/articleName/articleId/quantity/orderDate for each id — used to diff bulk status writes and restore inventory on bulk delete. */
@@ -96,6 +89,7 @@ async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, Orde
     snapshot.docs.forEach((docSnap) => {
       const data = docSnap.data()
       result.set(docSnap.id, {
+        statusId: data.statusId,
         status: data.status,
         employeeName: data.employeeName,
         articleName: data.articleName,
@@ -264,9 +258,14 @@ export async function updateOrder(id: string, input: OrderInput): Promise<void> 
   await logOrderHistory({ orderId: id, employeeName: input.employeeName, articleName: input.articleName, action, changes })
 }
 
-export async function updateOrderStatus(id: string, statusId: string, status: string): Promise<void> {
+export async function updateOrderStatus(
+  id: string,
+  statusId: string,
+  status: string,
+  isOrderedStatus: boolean,
+): Promise<void> {
   const before = await getOrder(id)
-  const becomesOrdered = status === ORDERED_STATUS_NAME && before?.status !== status
+  const becomesOrdered = isOrderedStatus && before?.statusId !== statusId
   const orderDate = becomesOrdered ? todayISO() : undefined
   await updateDoc(doc(db, 'orders', id), {
     statusId,
@@ -274,7 +273,7 @@ export async function updateOrderStatus(id: string, statusId: string, status: st
     ...(orderDate ? { orderDate } : {}),
     updatedAt: serverTimestamp(),
   })
-  if (!before || before.status === status) return
+  if (!before || before.statusId === statusId) return
   const changes: OrderHistoryChange[] = [{ field: 'status', label: 'Status', from: before.status, to: status }]
   if (orderDate) {
     changes.push({ field: 'orderDate', label: 'Datum', from: formatDateDe(before.orderDate), to: formatDateDe(orderDate) })
@@ -283,7 +282,7 @@ export async function updateOrderStatus(id: string, statusId: string, status: st
     orderId: id,
     employeeName: before.employeeName,
     articleName: before.articleName,
-    action: 'status_changed',
+    action: changes.length === 1 ? 'status_changed' : 'updated',
     changes,
   })
 }
@@ -366,31 +365,41 @@ export async function deleteAllOrders(): Promise<void> {
   await deleteOrders(snapshot.docs.map((docSnap) => docSnap.id))
 }
 
-export async function updateOrdersStatus(ids: string[], statusId: string, status: string): Promise<void> {
+export async function updateOrdersStatus(
+  ids: string[],
+  statusId: string,
+  status: string,
+  isOrderedStatus: boolean,
+): Promise<void> {
   const before = await fetchOrderSnapshotsByIds(ids)
-  const becomesOrdered = status === ORDERED_STATUS_NAME
-  const orderDate = becomesOrdered ? todayISO() : undefined
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const chunk = ids.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(db)
-    chunk.forEach((id) =>
-      batch.update(doc(db, 'orders', id), { statusId, status, ...(orderDate ? { orderDate } : {}), updatedAt: serverTimestamp() }),
-    )
+    chunk.forEach((id) => {
+      const becomesOrdered = isOrderedStatus && before.get(id)?.statusId !== statusId
+      batch.update(doc(db, 'orders', id), {
+        statusId,
+        status,
+        ...(becomesOrdered ? { orderDate: todayISO() } : {}),
+        updatedAt: serverTimestamp(),
+      })
+    })
     await batch.commit()
   }
   await Promise.all(
     ids.map((id) => {
       const snap = before.get(id)
-      if (!snap || snap.status === status) return Promise.resolve()
+      if (!snap || snap.statusId === statusId) return Promise.resolve()
       const changes: OrderHistoryChange[] = [{ field: 'status', label: 'Status', from: snap.status, to: status }]
-      if (orderDate) {
+      if (isOrderedStatus) {
+        const orderDate = todayISO()
         changes.push({ field: 'orderDate', label: 'Datum', from: formatDateDe(snap.orderDate), to: formatDateDe(orderDate) })
       }
       return logOrderHistory({
         orderId: id,
         employeeName: snap.employeeName,
         articleName: snap.articleName,
-        action: 'status_changed',
+        action: changes.length === 1 ? 'status_changed' : 'updated',
         changes,
       })
     }),

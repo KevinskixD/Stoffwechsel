@@ -5,6 +5,7 @@ import { PageHeader } from '../../shared/components/PageHeader'
 import { useToast } from '../../shared/components/ToastProvider'
 import { base64ToArrayBuffer, downloadBlob, fileToBase64 } from '../../shared/utils/file'
 import { emptyTableMapping, type TableMapping } from '../../types/bestellFormularSettings'
+import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { saveBestellFormularSettings } from './api'
 import { useBestellFormularSettings } from './hooks'
@@ -128,8 +129,8 @@ export function BestellFormularSettingsPage() {
     setOrtsstelle(settings.ortsstelle)
     setUpperTable(settings.upperTable)
     setLowerTable(settings.lowerTable)
-    setTriggerStatusId(settings.triggerStatusId || statuses.find((s) => s.name === 'Zu Bestellen')?.id || '')
-    setTargetStatusId(settings.targetStatusId || statuses.find((s) => s.name === 'Bestellt')?.id || '')
+    setTriggerStatusId(settings.triggerStatusId || statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order'))?.id || '')
+    setTargetStatusId(settings.targetStatusId || statuses.find((s) => hasOrderStatusSemanticKey(s, 'ordered'))?.id || '')
     setMatrixSheetName(settings.matrixSheetName)
     setMatrixArtikelNrColumn(settings.matrixArtikelNrColumn)
     setMatrixBezeichnungColumn(settings.matrixBezeichnungColumn)

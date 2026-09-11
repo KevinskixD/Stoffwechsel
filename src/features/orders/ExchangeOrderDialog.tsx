@@ -5,11 +5,8 @@ import { formInputClass } from '../../shared/components/FormField'
 import { articleDisplayLabel } from '../../types/article'
 import type { Article } from '../../types/article'
 import type { Order } from '../../types/order'
-import type { OrderStatus } from '../../types/orderStatus'
+import { hasOrderStatusSemanticKey, type OrderStatus } from '../../types/orderStatus'
 import { exchangeOrder } from './api'
-
-const EXCHANGE_STATUS_NAME = 'Umtausch'
-const DEFAULT_NEW_STATUS_NAME = 'Abgeholt'
 
 interface ExchangeOrderDialogProps {
   open: boolean
@@ -27,10 +24,10 @@ export function ExchangeOrderDialog({ open, order, articles, orderStatuses, onDo
   const [confirmNegativeStock, setConfirmNegativeStock] = useState(false)
 
   const activeStatuses = orderStatuses.filter((s) => s.active)
-  const exchangeStatus = orderStatuses.find((s) => s.name === EXCHANGE_STATUS_NAME)
+  const exchangeStatus = orderStatuses.find((s) => hasOrderStatusSemanticKey(s, 'exchange'))
   const selectedNewArticle = articles.find((a) => a.id === newArticleId)
   const effectiveNewStatusId =
-    newStatusId || activeStatuses.find((s) => s.name === DEFAULT_NEW_STATUS_NAME)?.id || activeStatuses[0]?.id || ''
+    newStatusId || activeStatuses.find((s) => hasOrderStatusSemanticKey(s, 'picked_up'))?.id || activeStatuses[0]?.id || ''
   const selectedNewStatus = activeStatuses.find((s) => s.id === effectiveNewStatusId)
 
   if (!open || !order) return null
@@ -95,7 +92,7 @@ export function ExchangeOrderDialog({ open, order, articles, orderStatuses, onDo
 
         {!exchangeStatus ? (
           <p className="mt-4 text-[13px] font-semibold text-red-600">
-            Status "Umtausch" wurde nicht gefunden – bitte in den Einstellungen anlegen.
+            Der Status für Umtausch wurde nicht gefunden – bitte in den Einstellungen anlegen.
           </p>
         ) : null}
 

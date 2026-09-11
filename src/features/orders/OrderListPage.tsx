@@ -18,6 +18,7 @@ import { matchesAllTokens } from '../../shared/utils/search'
 import { statusColors } from '../../shared/utils/statusColors'
 import { articleDisplayLabel } from '../../types/article'
 import { employeeDisplayName } from '../../types/employee'
+import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
 import type { Order } from '../../types/order'
 import { useArticles } from '../articles/hooks'
 import { generateBestelldateien } from '../bestellFormular/generate'
@@ -44,9 +45,6 @@ import {
 import { useOrders } from './hooks'
 
 const PAGE_SIZE = 25
-
-/** Only orders in this status can be exchanged — same literal-name convention as ORDERED_STATUS_NAME in api.ts. */
-const PICKED_UP_STATUS_NAME = 'Abgeholt'
 
 type PendingDelete = { kind: 'single'; order: Order } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
 
@@ -252,7 +250,9 @@ export function OrderListPage() {
             value={o.statusId}
             onChange={(e) => {
               const selected = activeOrderStatuses.find((s) => s.id === e.target.value)
-              if (selected) void updateOrderStatus(o.id, selected.id, selected.name)
+              if (selected) {
+                void updateOrderStatus(o.id, selected.id, selected.name, hasOrderStatusSemanticKey(selected, 'ordered'))
+              }
             }}
             className="appearance-none rounded-full border-0 px-3 py-1 text-xs font-semibold"
             style={{ backgroundColor: c.bg, color: c.fg }}
@@ -284,7 +284,7 @@ export function OrderListPage() {
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
-          {o.status === PICKED_UP_STATUS_NAME && !o.exchangedToOrderId ? (
+          {hasOrderStatusSemanticKey(allOrderStatuses.find((s) => s.id === o.statusId), 'picked_up') && !o.exchangedToOrderId ? (
             <button
               type="button"
               onClick={() => setExchangingOrder(o)}
@@ -344,7 +344,12 @@ export function OrderListPage() {
     setBestellBusy(true)
     const result = await generateBestelldateien(bestellConfirmOrders, bestellSettings, articles)
     if (bestellTargetStatus) {
-      await updateOrdersStatus(result.includedOrderIds, bestellTargetStatus.id, bestellTargetStatus.name)
+      await updateOrdersStatus(
+        result.includedOrderIds,
+        bestellTargetStatus.id,
+        bestellTargetStatus.name,
+        hasOrderStatusSemanticKey(bestellTargetStatus, 'ordered'),
+      )
     }
     setBestellBusy(false)
     setBestellConfirmOrders(null)
@@ -358,7 +363,7 @@ export function OrderListPage() {
 
   function handleSyncEmployeeNamesClick() {
     const employeeById = new Map(employees.map((e) => [e.id, e]))
-    const mismatches = rawOrders
+    const mismatches = filtered
       .map((o) => {
         const employee = employeeById.get(o.employeeId)
         if (!employee) return null
@@ -383,7 +388,7 @@ export function OrderListPage() {
 
   function handleSyncPickupLocationsClick() {
     const articleById = new Map(articles.map((a) => [a.id, a]))
-    const mismatches = rawOrders
+    const mismatches = filtered
       .map((o) => {
         const article = articleById.get(o.articleId)
         if (!article) return null
@@ -409,7 +414,7 @@ export function OrderListPage() {
 
   function handleSyncArticleNamesClick() {
     const articleById = new Map(articles.map((a) => [a.id, a]))
-    const mismatches = rawOrders
+    const mismatches = filtered
       .map((o) => {
         const article = articleById.get(o.articleId)
         if (!article) return null

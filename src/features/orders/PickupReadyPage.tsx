@@ -44,7 +44,9 @@ export function PickupReadyPage() {
       quantity: order.quantity,
       articleName: order.articleName,
       articleSize: order.articleSize || article?.size || '',
-      pickupLocationName: order.pickupLocationName || article?.pickupLocationName || '',
+      // Pickup instructions must reflect the current article setup. Keep the order snapshot only
+      // as a fallback for deleted legacy articles that can no longer be resolved.
+      pickupLocationName: article?.pickupLocationName ?? order.pickupLocationName,
     }
   }
 

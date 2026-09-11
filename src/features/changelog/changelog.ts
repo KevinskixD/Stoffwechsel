@@ -19,6 +19,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.1',
+    date: '2026-09-11',
+    changes: [
+      { type: 'fix', text: 'Abholbereit-Notifizierungen verwenden nun den aktuell am Artikel hinterlegten Abholort.' },
+      { type: 'fix', text: 'Umbenannte Abholorte und Status werden zuverlässig in betroffenen Artikeln und Bestellungen übernommen.' },
+      { type: 'fix', text: 'Abgleichaktionen für Bestellungen berücksichtigen nun alle aktiven Filter, einschließlich Status und Suche.' },
+      { type: 'verbessert', text: 'Umbenannte Standardstatus behalten ihre Funktion für Bestelldatum, Dashboard und Umtausch.' },
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-09-08',
     changes: [

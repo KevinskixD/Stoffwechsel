@@ -2,13 +2,14 @@ import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../shared/components/StatusBadge'
 import { formatDateDe } from '../../shared/utils/date'
 import type { Order } from '../../types/order'
+import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
 import { useArticles } from '../articles/hooks'
 import { useNotificationSettings } from '../notificationSettings/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { useOrders } from '../orders/hooks'
 
-function countByStatus(orders: Order[], statusName: string) {
-  return orders.filter((o) => o.status === statusName).length
+function countByStatusId(orders: Order[], statusId: string | undefined) {
+  return statusId ? orders.filter((o) => o.statusId === statusId).length : 0
 }
 
 export function DashboardPage() {
@@ -25,17 +26,19 @@ export function DashboardPage() {
   const pickupReadyCount = notificationSettings.triggerStatusId
     ? orders.filter((o) => o.statusId === notificationSettings.triggerStatusId).length
     : 0
+  const toOrderStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order'))
+  const orderedStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'ordered'))
 
   const kpis = [
     {
-      label: 'Zu Bestellen',
-      value: countByStatus(orders, 'Zu Bestellen'),
+      label: toOrderStatus?.name ?? 'Zu Bestellen',
+      value: countByStatusId(orders, toOrderStatus?.id),
       delta: 'warten auf Bestellung',
       deltaColor: 'var(--color-badge-red-fg)',
     },
     {
-      label: 'Bestellt',
-      value: countByStatus(orders, 'Bestellt'),
+      label: orderedStatus?.name ?? 'Bestellt',
+      value: countByStatusId(orders, orderedStatus?.id),
       delta: 'bei Lieferant',
       deltaColor: 'var(--color-badge-amber-fg)',
     },
@@ -113,7 +116,7 @@ export function DashboardPage() {
                   className="flex items-center justify-between border-b border-white/20 py-2.5 last:border-0 hover:opacity-80"
                 >
                   <span className="text-sm font-semibold">{s.name}</span>
-                  <span className="text-sm font-extrabold">{countByStatus(orders, s.name)}</span>
+                  <span className="text-sm font-extrabold">{countByStatusId(orders, s.id)}</span>
                 </Link>
               ))}
             </div>

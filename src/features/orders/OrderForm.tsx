@@ -9,6 +9,7 @@ import { FormCard, FormField, formInputClass } from '../../shared/components/For
 import { todayISO } from '../../shared/utils/date'
 import { articleDisplayLabel } from '../../types/article'
 import { employeeDisplayName } from '../../types/employee'
+import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
 import type { OrderInput } from '../../types/order'
 import { createOrder, getOrder, updateOrder } from './api'
 
@@ -72,7 +73,7 @@ export function OrderForm() {
 
   useEffect(() => {
     if (isEdit || form.statusId || statuses.length === 0) return
-    const defaultStatus = statuses.find((s) => s.name === 'Zu Bestellen') ?? statuses[0]
+    const defaultStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ?? statuses[0]
     setForm((f) => ({ ...f, statusId: defaultStatus.id, status: defaultStatus.name }))
   }, [isEdit, form.statusId, statuses])
 

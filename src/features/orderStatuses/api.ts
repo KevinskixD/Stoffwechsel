@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -14,7 +15,7 @@ import {
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
 import { reassignOrdersStatus } from '../orders/api'
-import type { OrderStatus } from '../../types/orderStatus'
+import { getOrderStatusSemanticKey, type OrderStatus, type OrderStatusSemanticKey } from '../../types/orderStatus'
 
 const orderStatusConverter = createConverter<OrderStatus>()
 const orderStatusesCollection = collection(db, 'orderStatuses')
@@ -46,11 +47,24 @@ export async function createOrderStatus(name: string): Promise<void> {
 }
 
 export async function renameOrderStatus(id: string, name: string): Promise<void> {
-  await updateDoc(doc(db, 'orderStatuses', id), { name, updatedAt: serverTimestamp() })
+  const snapshot = await getDoc(doc(db, 'orderStatuses', id).withConverter(orderStatusConverter))
+  const current = snapshot.exists() ? snapshot.data() : undefined
+  const semanticKey = current ? getOrderStatusSemanticKey(current) : undefined
+  await reassignOrdersStatus([id], id, name)
+  await updateDoc(doc(db, 'orderStatuses', id), { name, ...(semanticKey ? { semanticKey } : {}), updatedAt: serverTimestamp() })
 }
 
 export async function updateOrderStatusColor(id: string, color: string): Promise<void> {
   await updateDoc(doc(db, 'orderStatuses', id), { color, updatedAt: serverTimestamp() })
+}
+
+/** Assigns the stable workflow role needed when a legacy default status was renamed before semantic keys existed. */
+export async function updateOrderStatusSemanticKey(id: string, semanticKey: OrderStatusSemanticKey | undefined): Promise<void> {
+  await updateDoc(doc(db, 'orderStatuses', id), {
+    // null is an explicit opt-out; an absent field preserves the legacy name-based fallback.
+    semanticKey: semanticKey ?? null,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function setOrderStatusActive(id: string, active: boolean): Promise<void> {
@@ -67,8 +81,15 @@ export async function deleteOrderStatus(id: string): Promise<void> {
  * the others.
  */
 export async function mergeOrderStatuses(keepId: string, mergeIds: string[], newName: string): Promise<void> {
+  const keepSnapshot = await getDoc(doc(db, 'orderStatuses', keepId).withConverter(orderStatusConverter))
+  const keep = keepSnapshot.exists() ? keepSnapshot.data() : undefined
+  const semanticKey = keep ? getOrderStatusSemanticKey(keep) : undefined
   await reassignOrdersStatus([keepId, ...mergeIds], keepId, newName)
-  await updateDoc(doc(db, 'orderStatuses', keepId), { name: newName, updatedAt: serverTimestamp() })
+  await updateDoc(doc(db, 'orderStatuses', keepId), {
+    name: newName,
+    ...(semanticKey ? { semanticKey } : {}),
+    updatedAt: serverTimestamp(),
+  })
   const batch = writeBatch(db)
   mergeIds.forEach((id) => batch.delete(doc(db, 'orderStatuses', id)))
   await batch.commit()

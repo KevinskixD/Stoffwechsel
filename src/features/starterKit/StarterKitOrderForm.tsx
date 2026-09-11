@@ -6,6 +6,7 @@ import { FormField, formInputClass } from '../../shared/components/FormField'
 import { todayISO } from '../../shared/utils/date'
 import { articleDisplayLabel } from '../../types/article'
 import { employeeDisplayName } from '../../types/employee'
+import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
 import type { OrderInput } from '../../types/order'
 import { useArticles } from '../articles/hooks'
 import { useEmployees } from '../employees/hooks'
@@ -42,7 +43,7 @@ export function StarterKitOrderForm() {
 
   useEffect(() => {
     if (statusId || statuses.length === 0) return
-    const defaultStatus = statuses.find((s) => s.name === 'Zu Bestellen') ?? statuses[0]
+    const defaultStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ?? statuses[0]
     setStatusId(defaultStatus.id)
     setStatus(defaultStatus.name)
   }, [statusId, statuses])

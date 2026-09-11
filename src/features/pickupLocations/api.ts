@@ -45,6 +45,8 @@ export async function createPickupLocation(name: string): Promise<void> {
 }
 
 export async function renamePickupLocation(id: string, name: string): Promise<void> {
+  const articles = await getDocs(query(collection(db, 'articles'), where('pickupLocationId', '==', id)))
+  await assignPickupLocationToArticles(articles.docs.map((docSnap) => docSnap.id), id, name)
   await updateDoc(doc(db, 'pickupLocations', id), { name, updatedAt: serverTimestamp() })
 }
 

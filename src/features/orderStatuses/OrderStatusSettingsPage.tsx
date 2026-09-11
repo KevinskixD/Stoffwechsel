@@ -4,7 +4,13 @@ import { PageHeader } from '../../shared/components/PageHeader'
 import { useSelection } from '../../shared/hooks/useRowSelection'
 import { isInteractiveClickTarget } from '../../shared/utils/rowClick'
 import { legacyHexBg } from '../../shared/utils/statusColors'
-import type { OrderStatus } from '../../types/orderStatus'
+import {
+  getOrderStatusSemanticKey,
+  ORDER_STATUS_SEMANTIC_KEY_LABELS,
+  ORDER_STATUS_SEMANTIC_KEYS,
+  type OrderStatus,
+  type OrderStatusSemanticKey,
+} from '../../types/orderStatus'
 import { MergeStatusDialog } from './MergeStatusDialog'
 import {
   createOrderStatus,
@@ -15,6 +21,7 @@ import {
   reorderOrderStatuses,
   setOrderStatusActive,
   updateOrderStatusColor,
+  updateOrderStatusSemanticKey,
 } from './api'
 import { useOrderStatuses } from './hooks'
 
@@ -173,7 +180,7 @@ export function OrderStatusSettingsPage() {
                 if (isInteractiveClickTarget(e.target)) return
                 selection.toggleRowClick(status.id, e.shiftKey)
               }}
-              className={`flex cursor-pointer items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
+              className={`flex flex-wrap cursor-pointer items-center gap-3 border-t-2 px-5 py-2.5 transition-colors ${
                 dragId === status.id ? 'opacity-40' : ''
               } ${dragOverId === status.id && dragId !== status.id ? 'border-brand bg-brand/5' : 'border-transparent'} ${
                 selection.selectedIds.has(status.id) ? 'bg-brand/5' : ''
@@ -226,6 +233,28 @@ export function OrderStatusSettingsPage() {
                 title="Hintergrundfarbe"
                 className="h-7 w-7 cursor-pointer rounded border border-black/[0.12] p-0.5"
               />
+
+              <select
+                value={getOrderStatusSemanticKey(status) ?? ''}
+                onChange={(e) =>
+                  void updateOrderStatusSemanticKey(status.id, (e.target.value || undefined) as OrderStatusSemanticKey | undefined)
+                }
+                aria-label={`Systemfunktion für ${status.name}`}
+                title="Systemfunktion für Dashboard, Bestelldatum und Umtausch"
+                className="max-w-44 rounded border border-black/[0.12] bg-surface px-2 py-1 text-xs text-gray-900"
+              >
+                <option value="">Keine Systemfunktion</option>
+                {ORDER_STATUS_SEMANTIC_KEYS.map((key) => {
+                  const usedByAnotherStatus = statuses.some(
+                    (candidate) => candidate.id !== status.id && getOrderStatusSemanticKey(candidate) === key,
+                  )
+                  return (
+                    <option key={key} value={key} disabled={usedByAnotherStatus}>
+                      {ORDER_STATUS_SEMANTIC_KEY_LABELS[key]}
+                    </option>
+                  )
+                })}
+              </select>
 
               <button
                 type="button"

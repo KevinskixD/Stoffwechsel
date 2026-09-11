@@ -1,5 +1,5 @@
 import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore'
-import { DEFAULT_ORDER_STATUS_NAMES } from '../types/orderStatus'
+import { DEFAULT_ORDER_STATUSES } from '../types/orderStatus'
 import { db } from './config'
 
 const seedMarkerRef = () => doc(db, 'appMeta', 'seed')
@@ -16,9 +16,10 @@ export async function ensureSeedData(): Promise<void> {
   await runTransaction(db, async (tx) => {
     const marker = await tx.get(seedMarkerRef())
     if (marker.exists()) return
-    DEFAULT_ORDER_STATUS_NAMES.forEach((name, index) => {
+    DEFAULT_ORDER_STATUSES.forEach(({ name, semanticKey }, index) => {
       tx.set(doc(statusesCollection), {
         name,
+        semanticKey,
         sortOrder: (index + 1) * 10,
         active: true,
         createdAt: serverTimestamp(),
