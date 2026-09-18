@@ -205,7 +205,7 @@ touching this:
 ### Order-to-order exchange (Umtausch)
 
 `exchangeOrder` (`src/features/orders/api.ts`) implements the "Umtausch" flow: a row action on
-`OrderListPage` (visible only when `status === 'Abgeholt'` and the order hasn't been exchanged
+`OrderListPage` (visible only when `status === 'Informiert'` and the order hasn't been exchanged
 already) opens `ExchangeOrderDialog.tsx`, which picks a replacement article and a status for the
 new order. `exchangeOrder` then creates that new order and marks the old one's status as
 `'Umtausch'`, linking the two both ways via `exchangedFromOrderId`/`exchangedToOrderId` (plus

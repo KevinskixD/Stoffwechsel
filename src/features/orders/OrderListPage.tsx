@@ -28,6 +28,7 @@ import { useEmployees } from '../employees/hooks'
 import { useOrderListSettings } from '../orderListSettings/hooks'
 import { useOrderStatuses } from '../orderStatuses/hooks'
 import { ExchangeOrderDialog } from './ExchangeOrderDialog'
+import { BestellMailPreviewDialog } from './BestellMailPreviewDialog'
 import {
   deleteAllOrders,
   deleteOrder,
@@ -73,6 +74,7 @@ export function OrderListPage() {
   const [page, setPage] = useState(0)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [bestellConfirmOrders, setBestellConfirmOrders] = useState<Order[] | null>(null)
+  const [bestellMailOrders, setBestellMailOrders] = useState<Order[] | null>(null)
   const [missingMatrixArticles, setMissingMatrixArticles] = useState<MatrixMismatch[]>([])
   const [bestellBusy, setBestellBusy] = useState(false)
   const [pendingNameSync, setPendingNameSync] = useState<{ id: string; employeeName: string }[] | null>(null)
@@ -284,7 +286,7 @@ export function OrderListPage() {
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
-          {hasOrderStatusSemanticKey(allOrderStatuses.find((s) => s.id === o.statusId), 'picked_up') && !o.exchangedToOrderId ? (
+          {hasOrderStatusSemanticKey(allOrderStatuses.find((s) => s.id === o.statusId), 'notified') && !o.exchangedToOrderId ? (
             <button
               type="button"
               onClick={() => setExchangingOrder(o)}
@@ -354,6 +356,8 @@ export function OrderListPage() {
     setBestellBusy(false)
     setBestellConfirmOrders(null)
     setMissingMatrixArticles([])
+    const includedOrderIds = new Set(result.includedOrderIds)
+    setBestellMailOrders(bestellConfirmOrders.filter((order) => includedOrderIds.has(order.id)))
     showToast(
       `${result.fileCount} Datei(en) erzeugt, ${result.includedOrderIds.length} Bestellung(en)` +
         (bestellTargetStatus ? ` auf "${bestellTargetStatus.name}" gesetzt.` : '.'),
@@ -616,6 +620,12 @@ export function OrderListPage() {
           setPendingDelete(null)
         }}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <BestellMailPreviewDialog
+        open={bestellMailOrders !== null}
+        orders={bestellMailOrders ?? []}
+        onClose={() => setBestellMailOrders(null)}
       />
 
       <ConfirmDialog

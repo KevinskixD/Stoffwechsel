@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.2',
+    date: '2026-09-18',
+    changes: [
+      { type: 'neu', text: 'Nach dem Erstellen einer Bestelldatei steht ein kopierfertiger Mailtext bereit.' },
+      { type: 'fix', text: 'Umtausche können bereits nach der Information zur Abholung erfasst werden.' },
+    ],
+  },
+  {
     version: '0.1.1',
     date: '2026-09-11',
     changes: [
