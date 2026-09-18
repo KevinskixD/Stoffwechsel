@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.5',
+    date: '2026-09-18',
+    changes: [
+      { type: 'neu', text: 'Doppelte Mitarbeiter können zusammengeführt werden; Bestellungen und Leihgaben werden übernommen.' },
+      { type: 'verbessert', text: 'Der Bestellverlauf dokumentiert die Übernahme bei einer Mitarbeiterzusammenführung.' },
+    ],
+  },
+  {
     version: '0.1.4',
     date: '2026-09-18',
     changes: [

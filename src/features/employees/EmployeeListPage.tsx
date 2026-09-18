@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from '../../shared/components/DataTab
 import { EditableCell } from '../../shared/components/EditableCell'
 import { PageHeader, PrimaryLinkButton } from '../../shared/components/PageHeader'
 import { SearchInput } from '../../shared/components/SearchInput'
+import { useToast } from '../../shared/components/ToastProvider'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
 import { matchesAllTokens } from '../../shared/utils/search'
 import type { Employee } from '../../types/employee'
@@ -14,10 +15,12 @@ import {
   deleteAllEmployees,
   deleteEmployee,
   deleteEmployees,
+  mergeEmployees,
   setEmployeeActive,
   swapEmployeeNames,
   updateEmployeeField,
 } from './api'
+import { MergeEmployeesDialog } from './MergeEmployeesDialog'
 import { useEmployees } from './hooks'
 
 type PendingDelete = { kind: 'single'; employee: Employee } | { kind: 'bulk'; ids: string[] } | { kind: 'all' }
@@ -28,10 +31,41 @@ export function EmployeeListPage() {
   const [pendingDeactivate, setPendingDeactivate] = useState<Employee | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [pendingSwap, setPendingSwap] = useState<Employee[] | null>(null)
+  const [pendingMerge, setPendingMerge] = useState<Employee[] | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState('')
+  const [mergeBusy, setMergeBusy] = useState(false)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const { showToast } = useToast()
   const { data: employees, loading } = useEmployees(showInactive)
 
   const filtered = employees.filter((e) => matchesAllTokens(search, e.firstName, e.lastName, e.personnelNumber))
   const selection = useRowSelection(filtered)
+
+  function openMerge() {
+    const selected = filtered.filter((employee) => selection.selectedIds.has(employee.id))
+    if (selected.length < 2) return
+    setPendingMerge(selected)
+    setMergeTargetId(selected[0].id)
+    setMergeError(null)
+  }
+
+  async function confirmMerge() {
+    if (!pendingMerge) return
+    const target = pendingMerge.find((employee) => employee.id === mergeTargetId)
+    if (!target) return
+    setMergeBusy(true)
+    setMergeError(null)
+    try {
+      const reassigned = await mergeEmployees(target, pendingMerge.map((employee) => employee.id))
+      showToast(`${pendingMerge.length - 1} Duplikat(e) zusammengeführt, ${reassigned} Bestellung(en) übertragen.`, 'success')
+      selection.clear()
+      setPendingMerge(null)
+    } catch (err) {
+      setMergeError(err instanceof Error ? err.message : 'Mitarbeiter konnten nicht zusammengeführt werden.')
+    } finally {
+      setMergeBusy(false)
+    }
+  }
 
   const columns: DataTableColumn<Employee>[] = [
     selection.column,
@@ -127,6 +161,15 @@ export function EmployeeListPage() {
         <ActiveToggleFilter showInactive={showInactive} onChange={setShowInactive} />
         {selection.selectedCount > 0 && (
           <>
+            {selection.selectedCount >= 2 ? (
+              <button
+                type="button"
+                onClick={openMerge}
+                className="rounded-lg border border-black/[0.12] px-3.5 py-1.5 text-[13px] font-bold text-gray-900"
+              >
+                Mitarbeiter zusammenführen
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setPendingSwap(filtered.filter((e) => selection.selectedIds.has(e.id)))}
@@ -172,6 +215,20 @@ export function EmployeeListPage() {
           setPendingDeactivate(null)
         }}
         onCancel={() => setPendingDeactivate(null)}
+      />
+
+      <MergeEmployeesDialog
+        employees={pendingMerge ?? []}
+        targetId={mergeTargetId}
+        busy={mergeBusy}
+        error={mergeError}
+        onTargetChange={setMergeTargetId}
+        onConfirm={() => void confirmMerge()}
+        onCancel={() => {
+          if (mergeBusy) return
+          setPendingMerge(null)
+          setMergeError(null)
+        }}
       />
 
       <ConfirmDialog

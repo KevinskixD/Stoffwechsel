@@ -525,6 +525,54 @@ export async function updateOrderEmployeeNames(updates: { id: string; employeeNa
 }
 
 /**
+ * Reassigns all orders of duplicate employee records to their surviving record. Order content,
+ * including loan issue/return state, remains untouched; only the employee FK and its snapshot
+ * name change. Every reassigned order receives an appended audit entry.
+ */
+export async function reassignOrdersEmployee(
+  fromEmployeeIds: string[],
+  toEmployeeId: string,
+  toEmployeeName: string,
+): Promise<number> {
+  const sourceIds = fromEmployeeIds.filter((id) => id && id !== toEmployeeId)
+  if (sourceIds.length === 0) return 0
+
+  const affected: Pick<Order, 'id' | 'employeeName' | 'articleName'>[] = []
+  for (let i = 0; i < sourceIds.length; i += IN_QUERY_CHUNK_SIZE) {
+    const chunk = sourceIds.slice(i, i + IN_QUERY_CHUNK_SIZE)
+    const snapshot = await getDocs(query(ordersCollection.withConverter(orderConverter), where('employeeId', 'in', chunk)))
+    snapshot.docs.forEach((docSnap) => affected.push(docSnap.data()))
+  }
+
+  for (let i = 0; i < affected.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db)
+    affected.slice(i, i + BATCH_SIZE).forEach((order) => {
+      batch.update(doc(db, 'orders', order.id), {
+        employeeId: toEmployeeId,
+        employeeName: toEmployeeName,
+        updatedAt: serverTimestamp(),
+      })
+    })
+    await batch.commit()
+  }
+
+  for (let i = 0; i < affected.length; i += BATCH_SIZE) {
+    await Promise.all(
+      affected.slice(i, i + BATCH_SIZE).map((order) =>
+        logOrderHistory({
+          orderId: order.id,
+          employeeName: toEmployeeName,
+          articleName: order.articleName,
+          action: 'updated',
+          changes: [{ field: 'employeeName', label: 'Mitarbeiter', from: order.employeeName, to: toEmployeeName }],
+        }),
+      ),
+    )
+  }
+  return affected.length
+}
+
+/**
  * Overwrites the denormalized `articleName`/`articleNumber` on each given order — for re-syncing
  * orders whose snapshot went stale (e.g. an article's number was corrected after the order was placed).
  */

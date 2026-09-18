@@ -15,6 +15,7 @@ import {
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
 import type { Employee, EmployeeInput } from '../../types/employee'
+import { reassignOrdersEmployee } from '../orders/api'
 
 const employeeConverter = createConverter<Employee>()
 const employeesCollection = collection(db, 'employees')
@@ -83,6 +84,23 @@ export async function deleteEmployees(ids: string[]): Promise<void> {
 export async function deleteAllEmployees(): Promise<void> {
   const snapshot = await getDocs(employeesCollection)
   await deleteEmployees(snapshot.docs.map((docSnap) => docSnap.id))
+}
+
+/**
+ * Keeps one employee record, transfers all order references from the duplicate records to it,
+ * then deletes those duplicates. Loan issues share the same order records and are included.
+ */
+export async function mergeEmployees(target: Pick<Employee, 'id' | 'firstName' | 'lastName'>, sourceIds: string[]): Promise<number> {
+  const duplicates = sourceIds.filter((id) => id && id !== target.id)
+  if (duplicates.length === 0) throw new Error('Bitte mindestens einen Duplikatdatensatz auswählen.')
+
+  const reassignedOrders = await reassignOrdersEmployee(
+    duplicates,
+    target.id,
+    `${target.lastName}, ${target.firstName}`,
+  )
+  await deleteEmployees(duplicates)
+  return reassignedOrders
 }
 
 /** Swaps firstName/lastName for each given employee — for fixing an import whose column mapping was reversed. */
