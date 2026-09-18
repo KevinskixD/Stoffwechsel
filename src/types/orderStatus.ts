@@ -13,6 +13,7 @@ export interface OrderStatus {
 
 export const ORDER_STATUS_SEMANTIC_KEYS = [
   'to_order',
+  'issued',
   'ordered',
   'delivered',
   'notified',
@@ -25,6 +26,7 @@ export type OrderStatusSemanticKey = (typeof ORDER_STATUS_SEMANTIC_KEYS)[number]
 
 export const ORDER_STATUS_SEMANTIC_KEY_LABELS: Record<OrderStatusSemanticKey, string> = {
   to_order: 'Startstatus / zu bestellen',
+  issued: 'Ausgegeben (automatisch für Leihgewand)',
   ordered: 'Bestellung ausgelöst',
   delivered: 'Geliefert',
   notified: 'Person informiert',
@@ -35,6 +37,7 @@ export const ORDER_STATUS_SEMANTIC_KEY_LABELS: Record<OrderStatusSemanticKey, st
 
 export const DEFAULT_ORDER_STATUSES: ReadonlyArray<{ semanticKey: OrderStatusSemanticKey; name: string }> = [
   { semanticKey: 'to_order', name: 'Zu Bestellen' },
+  { semanticKey: 'issued', name: 'Ausgegeben' },
   { semanticKey: 'ordered', name: 'Bestellt' },
   { semanticKey: 'delivered', name: 'Geliefert' },
   { semanticKey: 'notified', name: 'Informiert' },

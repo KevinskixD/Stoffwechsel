@@ -29,6 +29,7 @@ interface FormState {
   isLoanIssue: boolean
   issuedDate: string
   returnedDate: string
+  returnRequired: boolean
   exchangedFromOrderId: string
   exchangedFromArticleName: string
   exchangedToOrderId: string
@@ -51,6 +52,7 @@ const emptyForm: FormState = {
   isLoanIssue: false,
   issuedDate: '',
   returnedDate: '',
+  returnRequired: true,
   exchangedFromOrderId: '',
   exchangedFromArticleName: '',
   exchangedToOrderId: '',
@@ -79,7 +81,10 @@ export function OrderForm() {
 
   useEffect(() => {
     if (isEdit || form.statusId || statuses.length === 0) return
-    const defaultStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ?? statuses[0]
+    const defaultStatus =
+      statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ??
+      statuses.find((s) => !hasOrderStatusSemanticKey(s, 'issued'))
+    if (!defaultStatus) return
     setForm((f) => ({ ...f, statusId: defaultStatus.id, status: defaultStatus.name }))
   }, [isEdit, form.statusId, statuses])
 
@@ -103,6 +108,7 @@ export function OrderForm() {
           isLoanIssue: order.isLoanIssue ?? false,
           issuedDate: order.issuedDate ?? '',
           returnedDate: order.returnedDate ?? '',
+          returnRequired: order.returnRequired ?? true,
           exchangedFromOrderId: order.exchangedFromOrderId ?? '',
           exchangedFromArticleName: order.exchangedFromArticleName ?? '',
           exchangedToOrderId: order.exchangedToOrderId ?? '',
@@ -135,7 +141,8 @@ export function OrderForm() {
     articleOptions.unshift({ value: form.articleId, label: `${form.articleName} (inaktiv)`, data: null })
   }
 
-  const statusOptions = [...statuses]
+  const issuedStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'issued'))
+  const statusOptions = statuses.filter((s) => !hasOrderStatusSemanticKey(s, 'issued'))
   if (form.statusId && !statusOptions.some((s) => s.id === form.statusId)) {
     statusOptions.unshift({
       id: form.statusId,
@@ -180,8 +187,13 @@ export function OrderForm() {
     setError(null)
 
     const quantity = Number(form.quantity)
-    if (!form.employeeId || !form.articleId || !form.statusId || !form.orderDate) {
+    const isLoanIssue = isEdit ? form.isLoanIssue : Boolean(selectedArticle?.isLoanArticle)
+    if (!form.employeeId || !form.articleId || !form.orderDate || (!isLoanIssue && !form.statusId)) {
       setError('Bitte alle Felder ausfüllen.')
+      return
+    }
+    if (isLoanIssue && !issuedStatus) {
+      setError('Der automatische Status „Ausgegeben“ ist noch nicht verfügbar. Bitte Seite kurz neu laden.')
       return
     }
     if (!Number.isInteger(quantity) || quantity <= 0) {
@@ -189,7 +201,6 @@ export function OrderForm() {
       return
     }
 
-    const isLoanIssue = isEdit ? form.isLoanIssue : Boolean(selectedArticle?.isLoanArticle)
     const payload: OrderInput = {
       employeeId: form.employeeId,
       employeeName: form.employeeName,
@@ -200,12 +211,13 @@ export function OrderForm() {
       articleSize: form.articleSize,
       pickupLocationName: form.pickupLocationName,
       quantity,
-      statusId: form.statusId,
-      status: form.status,
+      statusId: isLoanIssue ? issuedStatus!.id : form.statusId,
+      status: isLoanIssue ? issuedStatus!.name : form.status,
       orderDate: form.orderDate,
       isLoanIssue,
       issuedDate: isLoanIssue ? form.orderDate : '',
       returnedDate: form.returnedDate,
+      returnRequired: isLoanIssue ? form.returnRequired : false,
       exchangedFromOrderId: form.exchangedFromOrderId,
       exchangedFromArticleName: form.exchangedFromArticleName,
       exchangedToOrderId: form.exchangedToOrderId,
@@ -294,25 +306,34 @@ export function OrderForm() {
           />
         </FormField>
 
-        <FormField label="Status">
-          <select
-            value={form.statusId}
-            onChange={(e) => {
-              const selected = statusOptions.find((s) => s.id === e.target.value)
-              setForm({ ...form, statusId: e.target.value, status: selected?.name.replace(' (inaktiv)', '') ?? '' })
-            }}
-            className={formInputClass}
-          >
-            <option value="" disabled>
-              Status auswählen…
-            </option>
-            {statusOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+        {selectedArticle?.isLoanArticle || form.isLoanIssue ? (
+          <FormField label="Status">
+            <p className="rounded-lg border border-black/[0.08] bg-page px-3.5 py-2.5 text-[13.5px] font-semibold text-gray-900">
+              {issuedStatus?.name ?? 'Ausgegeben'}
+            </p>
+            <p className="mt-1 text-[12.5px] text-black/45">Wird bei einer Leihgabe automatisch gesetzt.</p>
+          </FormField>
+        ) : (
+          <FormField label="Status">
+            <select
+              value={form.statusId}
+              onChange={(e) => {
+                const selected = statusOptions.find((s) => s.id === e.target.value)
+                setForm({ ...form, statusId: e.target.value, status: selected?.name.replace(' (inaktiv)', '') ?? '' })
+              }}
+              className={formInputClass}
+            >
+              <option value="" disabled>
+                Status auswählen…
               </option>
-            ))}
-          </select>
-        </FormField>
+              {statusOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
 
         <FormField label={selectedArticle?.isLoanArticle || form.isLoanIssue ? 'Ausgabedatum' : 'Bestelldatum'}>
           <input
@@ -322,6 +343,26 @@ export function OrderForm() {
             className={formInputClass}
           />
         </FormField>
+
+        {selectedArticle?.isLoanArticle || form.isLoanIssue ? (
+          <FormField label="Rückgabe">
+            <label className="flex items-center gap-2 text-[13.5px] text-gray-900">
+              <input
+                type="checkbox"
+                checked={form.returnRequired}
+                disabled={Boolean(form.returnedDate)}
+                onChange={(e) => setForm({ ...form, returnRequired: e.target.checked })}
+                className="h-4 w-4 rounded border-black/[0.25] accent-brand disabled:opacity-50"
+              />
+              Rückgabe erforderlich
+            </label>
+            <p className="mt-1 text-[12.5px] text-black/45">
+              {form.returnRequired
+                ? 'Bei der Rückgabe wird der Bestand wieder eingebucht.'
+                : 'Keine Rückgabe vorgesehen; die Ausgabe reduziert den Bestand dauerhaft.'}
+            </p>
+          </FormField>
+        ) : null}
 
         {error ? <p className="text-[13px] text-red-600">{error}</p> : null}
 

@@ -39,12 +39,12 @@ No test runner is configured in this repo.
    firebase deploy --only firestore:rules --project <project-id>
    firebase deploy --only firestore:indexes --project <project-id>
    ```
-4. The seven default order statuses ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
-   "Abgeholt", "Umtausch", "Abgeschlossen") are seeded automatically on first run if the
-   `orderStatuses` collection is empty (`src/firebase/seed.ts`) — race-safe via a transaction
-   against an `appMeta/seed` marker doc, so two overlapping first-runs (two tabs, a dev
-   reload racing an in-flight write) can't double-seed. `appMeta` is internal bookkeeping and
-   is deliberately excluded from backups.
+4. The eight default order statuses ("Zu Bestellen", "Ausgegeben", "Bestellt", "Geliefert",
+   "Informiert", "Abgeholt", "Umtausch", "Abgeschlossen") are seeded automatically
+   (`src/firebase/seed.ts`). "Ausgegeben" has the reserved `issued` semantic key, is created
+   even for existing installations, and is assigned only to loan issues. Seeding is race-safe
+   via a transaction against an `appMeta/seed` marker doc. `appMeta` is internal bookkeeping
+   and is deliberately excluded from backups.
 
 ## Architecture
 

@@ -44,7 +44,10 @@ export function StarterKitOrderForm() {
 
   useEffect(() => {
     if (statusId || statuses.length === 0) return
-    const defaultStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ?? statuses[0]
+    const defaultStatus =
+      statuses.find((s) => hasOrderStatusSemanticKey(s, 'to_order')) ??
+      statuses.find((s) => !hasOrderStatusSemanticKey(s, 'issued'))
+    if (!defaultStatus) return
     setStatusId(defaultStatus.id)
     setStatus(defaultStatus.name)
   }, [statusId, statuses])
@@ -82,6 +85,8 @@ export function StarterKitOrderForm() {
     label: employeeDisplayName(e),
     data: null,
   }))
+  const issuedStatus = statuses.find((s) => hasOrderStatusSemanticKey(s, 'issued'))
+  const regularStatuses = statuses.filter((s) => !hasOrderStatusSemanticKey(s, 'issued'))
 
   function buildLines(): PendingLine[] {
     return categories
@@ -116,12 +121,13 @@ export function StarterKitOrderForm() {
           articleSize: line.articleSize,
           pickupLocationName: line.pickupLocationName,
           quantity: 1,
-          statusId,
-          status,
+          statusId: line.isLoanIssue ? issuedStatus?.id ?? '' : statusId,
+          status: line.isLoanIssue ? issuedStatus?.name ?? '' : status,
           orderDate,
           isLoanIssue: line.isLoanIssue,
           issuedDate: line.isLoanIssue ? orderDate : '',
           returnedDate: '',
+          returnRequired: line.isLoanIssue,
           exchangedFromOrderId: '',
           exchangedFromArticleName: '',
           exchangedToOrderId: '',
@@ -148,6 +154,10 @@ export function StarterKitOrderForm() {
     const lines = buildLines()
     if (lines.length === 0) {
       setError('Bitte mindestens eine Kategorie auswählen.')
+      return
+    }
+    if (lines.some((line) => line.isLoanIssue) && !issuedStatus) {
+      setError('Der automatische Status „Ausgegeben“ ist noch nicht verfügbar. Bitte Seite kurz neu laden.')
       return
     }
 
@@ -186,7 +196,7 @@ export function StarterKitOrderForm() {
               <select
                 value={statusId}
                 onChange={(e) => {
-                  const selected = statuses.find((s) => s.id === e.target.value)
+                  const selected = regularStatuses.find((s) => s.id === e.target.value)
                   setStatusId(e.target.value)
                   setStatus(selected?.name ?? '')
                 }}
@@ -197,7 +207,7 @@ export function StarterKitOrderForm() {
                     Status auswählen…
                   </option>
                 )}
-                {statuses.map((s) => (
+                {regularStatuses.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>

@@ -31,9 +31,9 @@ kein Multi-User-Betrieb — siehe Sicherheitshinweis unten.
    ```
 7. App starten: `npm run dev` und mit dem autorisierten Google-Konto anmelden.
 
-Die sieben Standard-Bestellstatus ("Zu Bestellen", "Bestellt", "Geliefert", "Informiert",
-"Abgeholt", "Umtausch", "Abgeschlossen") werden beim ersten Start automatisch in Firestore
-angelegt, sofern die Collection `orderStatuses` noch leer ist.
+Die acht Standard-Bestellstatus ("Zu Bestellen", "Ausgegeben", "Bestellt", "Geliefert",
+"Informiert", "Abgeholt", "Umtausch", "Abgeschlossen") werden automatisch in Firestore
+angelegt. "Ausgegeben" ist für Leihgewand reserviert und wird bei einer Ausgabe automatisch gesetzt.
 
 ## Sicherheitshinweis
 

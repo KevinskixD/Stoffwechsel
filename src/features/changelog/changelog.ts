@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.4',
+    date: '2026-09-18',
+    changes: [
+      { type: 'neu', text: 'Leihgaben erhalten automatisch den reservierten Status „Ausgegeben“.' },
+      { type: 'neu', text: 'Bei einer Ausgabe kann festgelegt werden, ob eine Rückgabe erforderlich ist.' },
+    ],
+  },
+  {
     version: '0.1.3',
     date: '2026-09-18',
     changes: [

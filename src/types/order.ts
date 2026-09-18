@@ -22,6 +22,8 @@ export interface Order {
   issuedDate: string
   /** ISO date the loan item was returned; '' while it is still out. */
   returnedDate: string
+  /** Only relevant to loan issues. False means the item stays permanently issued. */
+  returnRequired: boolean
   /** FK to the order this one replaced via Umtausch; '' if not created through an exchange. */
   exchangedFromOrderId: string
   /** Denormalized label (articleDisplayLabel) of the replaced order's article. */
@@ -50,6 +52,7 @@ export type OrderInput = {
   isLoanIssue: boolean
   issuedDate: string
   returnedDate: string
+  returnRequired: boolean
   exchangedFromOrderId: string
   exchangedFromArticleName: string
   exchangedToOrderId: string

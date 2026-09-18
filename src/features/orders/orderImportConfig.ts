@@ -194,6 +194,7 @@ export const orderImportConfig: ImportEntityConfig<Order, OrderImportPrefetch> =
     isLoanIssue: false,
     issuedDate: '',
     returnedDate: '',
+    returnRequired: false,
     exchangedFromOrderId: '',
     exchangedFromArticleName: '',
     exchangedToOrderId: '',

@@ -227,7 +227,11 @@ export function OrderListPage() {
           {o.isLoanIssue ? (
             <p className="mt-1 text-xs text-black/55">
               Leihgabe · Ausgabe: {formatDateDe(o.issuedDate || o.orderDate)}
-              {o.returnedDate ? ` · Rückgabe: ${formatDateDe(o.returnedDate)}` : ' · noch nicht retourniert'}
+              {o.returnRequired !== false
+                ? o.returnedDate
+                  ? ` · Rückgabe: ${formatDateDe(o.returnedDate)}`
+                  : ' · Rückgabe offen'
+                : ' · keine Rückgabe vorgesehen'}
             </p>
           ) : null}
         </div>
@@ -255,6 +259,14 @@ export function OrderListPage() {
       align: 'center',
       render: (o) => {
         const c = statusColors(allOrderStatuses.find((s) => s.id === o.statusId) ?? { name: o.status })
+        if (o.isLoanIssue) {
+          return (
+            <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: c.bg, color: c.fg }}>
+              {o.status}
+            </span>
+          )
+        }
+        const selectableStatuses = activeOrderStatuses.filter((s) => !hasOrderStatusSemanticKey(s, 'issued'))
         return (
           <select
             value={o.statusId}
@@ -267,10 +279,10 @@ export function OrderListPage() {
             className="appearance-none rounded-full border-0 px-3 py-1 text-xs font-semibold"
             style={{ backgroundColor: c.bg, color: c.fg }}
           >
-            {!activeOrderStatuses.some((s) => s.id === o.statusId) && (
+            {!selectableStatuses.some((s) => s.id === o.statusId) && (
               <option value={o.statusId}>{o.status}</option>
             )}
-            {activeOrderStatuses.map((s) => (
+            {selectableStatuses.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
@@ -294,7 +306,7 @@ export function OrderListPage() {
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
-          {o.isLoanIssue && !o.returnedDate ? (
+          {o.isLoanIssue && o.returnRequired !== false && !o.returnedDate ? (
             <button
               type="button"
               onClick={() => setPendingReturn(o)}

@@ -46,8 +46,8 @@ function buildCreatedChanges(input: OrderInput): OrderHistoryChange[] {
 }
 
 /** A returned loan is already back in stock; all other orders consume stock while they exist. */
-function affectsInventory(order: Pick<Order, 'isLoanIssue' | 'returnedDate'>): boolean {
-  return !order.isLoanIssue || !order.returnedDate
+function affectsInventory(order: Pick<Order, 'isLoanIssue' | 'returnRequired' | 'returnedDate'>): boolean {
+  return !order.isLoanIssue || order.returnRequired === false || !order.returnedDate
 }
 
 /** Diffs a full-form edit against the previous document — only changed fields are logged. */
@@ -78,6 +78,14 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
       to: formatDateDe(after.orderDate),
     })
   }
+  if (before.returnRequired !== after.returnRequired && after.isLoanIssue) {
+    changes.push({
+      field: 'returnRequired',
+      label: 'Rückgabe',
+      from: before.returnRequired === false ? 'nicht erforderlich' : 'erforderlich',
+      to: after.returnRequired ? 'erforderlich' : 'nicht erforderlich',
+    })
+  }
   if ((before.comment ?? '') !== after.comment) {
     changes.push({ field: 'comment', label: 'Kommentar', from: before.comment ?? '', to: after.comment })
   }
@@ -95,6 +103,7 @@ type OrderSnapshotFields = Pick<
   | 'orderDate'
   | 'comment'
   | 'isLoanIssue'
+  | 'returnRequired'
   | 'returnedDate'
 >
 
@@ -117,6 +126,7 @@ async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, Orde
         orderDate: data.orderDate,
         comment: data.comment ?? '',
         isLoanIssue: data.isLoanIssue ?? false,
+        returnRequired: data.returnRequired ?? true,
         returnedDate: data.returnedDate ?? '',
       })
     })
@@ -199,6 +209,7 @@ export async function exchangeOrder(input: ExchangeOrderInput): Promise<string> 
     isLoanIssue: false,
     issuedDate: '',
     returnedDate: '',
+    returnRequired: false,
     exchangedFromOrderId: before.id,
     exchangedFromArticleName: articleDisplayLabel(before),
     exchangedToOrderId: '',
@@ -288,7 +299,7 @@ export async function updateOrder(id: string, input: OrderInput): Promise<void> 
 export async function returnLoanOrder(id: string): Promise<void> {
   const before = await getOrder(id)
   if (!before) throw new Error('Leihgabe nicht gefunden.')
-  if (!before.isLoanIssue) throw new Error('Diese Bestellung ist keine Leihgabe.')
+  if (!before.isLoanIssue || before.returnRequired === false) throw new Error('Für diese Ausgabe ist keine Rückgabe vorgesehen.')
   if (before.returnedDate) throw new Error('Diese Leihgabe wurde bereits retourniert.')
 
   const returnedDate = todayISO()
@@ -397,8 +408,8 @@ export async function deleteOrders(ids: string[]): Promise<void> {
     await batch.commit()
   }
   const restockByArticle = new Map<string, number>()
-  before.forEach(({ articleId, quantity, isLoanIssue, returnedDate }) => {
-    if (affectsInventory({ isLoanIssue: isLoanIssue ?? false, returnedDate: returnedDate ?? '' })) {
+  before.forEach(({ articleId, quantity, isLoanIssue, returnRequired, returnedDate }) => {
+    if (affectsInventory({ isLoanIssue: isLoanIssue ?? false, returnRequired: returnRequired ?? true, returnedDate: returnedDate ?? '' })) {
       restockByArticle.set(articleId, (restockByArticle.get(articleId) ?? 0) + quantity)
     }
   })
