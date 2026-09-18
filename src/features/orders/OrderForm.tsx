@@ -26,6 +26,9 @@ interface FormState {
   statusId: string
   status: string
   orderDate: string
+  isLoanIssue: boolean
+  issuedDate: string
+  returnedDate: string
   exchangedFromOrderId: string
   exchangedFromArticleName: string
   exchangedToOrderId: string
@@ -45,6 +48,9 @@ const emptyForm: FormState = {
   statusId: '',
   status: '',
   orderDate: todayISO(),
+  isLoanIssue: false,
+  issuedDate: '',
+  returnedDate: '',
   exchangedFromOrderId: '',
   exchangedFromArticleName: '',
   exchangedToOrderId: '',
@@ -94,6 +100,9 @@ export function OrderForm() {
           statusId: order.statusId,
           status: order.status,
           orderDate: order.orderDate,
+          isLoanIssue: order.isLoanIssue ?? false,
+          issuedDate: order.issuedDate ?? '',
+          returnedDate: order.returnedDate ?? '',
           exchangedFromOrderId: order.exchangedFromOrderId ?? '',
           exchangedFromArticleName: order.exchangedFromArticleName ?? '',
           exchangedToOrderId: order.exchangedToOrderId ?? '',
@@ -180,6 +189,7 @@ export function OrderForm() {
       return
     }
 
+    const isLoanIssue = isEdit ? form.isLoanIssue : Boolean(selectedArticle?.isLoanArticle)
     const payload: OrderInput = {
       employeeId: form.employeeId,
       employeeName: form.employeeName,
@@ -193,6 +203,9 @@ export function OrderForm() {
       statusId: form.statusId,
       status: form.status,
       orderDate: form.orderDate,
+      isLoanIssue,
+      issuedDate: isLoanIssue ? form.orderDate : '',
+      returnedDate: form.returnedDate,
       exchangedFromOrderId: form.exchangedFromOrderId,
       exchangedFromArticleName: form.exchangedFromArticleName,
       exchangedToOrderId: form.exchangedToOrderId,
@@ -301,7 +314,7 @@ export function OrderForm() {
           </select>
         </FormField>
 
-        <FormField label="Bestelldatum">
+        <FormField label={selectedArticle?.isLoanArticle || form.isLoanIssue ? 'Ausgabedatum' : 'Bestelldatum'}>
           <input
             type="date"
             value={form.orderDate}

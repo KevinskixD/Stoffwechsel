@@ -42,6 +42,7 @@ import {
   updateOrderQuantity,
   updateOrderStatus,
   updateOrdersStatus,
+  returnLoanOrder,
 } from './api'
 import { useOrders } from './hooks'
 
@@ -91,6 +92,7 @@ export function OrderListPage() {
     resolve: (ok: boolean) => void
   } | null>(null)
   const [exchangingOrder, setExchangingOrder] = useState<Order | null>(null)
+  const [pendingReturn, setPendingReturn] = useState<Order | null>(null)
   const [commentEditor, setCommentEditor] = useState<{ orderId: string; value: string } | null>(null)
 
   const { data: rawOrders, loading } = useOrders({
@@ -222,6 +224,12 @@ export function OrderListPage() {
               ← Umtausch von {o.exchangedFromArticleName}
             </Link>
           ) : null}
+          {o.isLoanIssue ? (
+            <p className="mt-1 text-xs text-black/55">
+              Leihgabe · Ausgabe: {formatDateDe(o.issuedDate || o.orderDate)}
+              {o.returnedDate ? ` · Rückgabe: ${formatDateDe(o.returnedDate)}` : ' · noch nicht retourniert'}
+            </p>
+          ) : null}
         </div>
       ),
     },
@@ -286,6 +294,15 @@ export function OrderListPage() {
           <Link to={`/orders/${o.id}/edit`} className="text-brand hover:underline">
             Bearbeiten
           </Link>
+          {o.isLoanIssue && !o.returnedDate ? (
+            <button
+              type="button"
+              onClick={() => setPendingReturn(o)}
+              className="text-brand hover:underline"
+            >
+              Retournieren
+            </button>
+          ) : null}
           {hasOrderStatusSemanticKey(allOrderStatuses.find((s) => s.id === o.statusId), 'notified') && !o.exchangedToOrderId ? (
             <button
               type="button"
@@ -332,7 +349,8 @@ export function OrderListPage() {
     setBestellBusy(true)
     const snapshot = await getDocs(ordersQuery({ status: bestellTriggerStatus.name }))
     setBestellBusy(false)
-    const matchingOrders = snapshot.docs.map((d) => d.data())
+    // Loan issues are managed entirely in-app and must never be sent to a supplier.
+    const matchingOrders = snapshot.docs.map((d) => d.data()).filter((order) => !order.isLoanIssue)
     if (matchingOrders.length === 0) {
       showToast(`Keine Bestellungen mit Status "${bestellTriggerStatus.name}" gefunden.`, 'info')
       return
@@ -626,6 +644,25 @@ export function OrderListPage() {
         open={bestellMailOrders !== null}
         orders={bestellMailOrders ?? []}
         onClose={() => setBestellMailOrders(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingReturn !== null}
+        title="Leihgewand retournehmen"
+        message={
+          pendingReturn
+            ? `${pendingReturn.quantity}× „${pendingReturn.articleName}“ wird als retourniert markiert und wieder eingebucht.`
+            : ''
+        }
+        confirmLabel="Retournieren"
+        onConfirm={() => {
+          if (!pendingReturn) return
+          void returnLoanOrder(pendingReturn.id)
+            .then(() => showToast('Leihgewand wurde retourniert und wieder eingebucht.', 'success'))
+            .catch((err) => showToast(err instanceof Error ? err.message : 'Rückgabe konnte nicht gespeichert werden.', 'error'))
+          setPendingReturn(null)
+        }}
+        onCancel={() => setPendingReturn(null)}
       />
 
       <ConfirmDialog

@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.3',
+    date: '2026-09-18',
+    changes: [
+      { type: 'neu', text: 'Artikel können als Leihgewand geführt, ausgegeben und im selben Eintrag retourniert werden.' },
+      { type: 'verbessert', text: 'Ausgabe- und Rückgabedatum sowie die Rückgabe sind direkt in der Bestellübersicht sichtbar.' },
+    ],
+  },
+  {
     version: '0.1.2',
     date: '2026-09-18',
     changes: [

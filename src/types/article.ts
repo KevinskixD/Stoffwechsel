@@ -8,6 +8,8 @@ export interface Article {
   trackInventory: boolean
   /** Current stock count, only meaningful when trackInventory is true; 0 otherwise. Can go negative (over-ordered). */
   inventoryQuantity: number
+  /** Loan items are issued through an order and can later be returned on that same order. */
+  isLoanArticle: boolean
   active: boolean
   /** Free text, e.g. "M", "42"; '' if unknown. Best-effort extracted from articleName. */
   size: string
@@ -27,6 +29,7 @@ export type ArticleInput = Pick<
   | 'deductibleAmount'
   | 'trackInventory'
   | 'inventoryQuantity'
+  | 'isLoanArticle'
   | 'size'
   | 'pickupLocationId'
   | 'pickupLocationName'

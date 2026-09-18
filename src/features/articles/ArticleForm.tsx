@@ -23,6 +23,7 @@ const emptyForm: ArticleInput = {
   deductibleAmount: 0,
   trackInventory: false,
   inventoryQuantity: 0,
+  isLoanArticle: false,
   size: '',
   pickupLocationId: '',
   pickupLocationName: '',
@@ -52,6 +53,7 @@ export function ArticleForm() {
           deductibleAmount: article.deductibleAmount,
           trackInventory: article.trackInventory,
           inventoryQuantity: article.inventoryQuantity,
+          isLoanArticle: article.isLoanArticle ?? false,
           size: article.size || extractSizeFromArticleName(article.articleName),
           pickupLocationId: article.pickupLocationId ?? '',
           pickupLocationName: article.pickupLocationName ?? '',
@@ -83,6 +85,7 @@ export function ArticleForm() {
         deductibleAmount: form.hasDeductible ? form.deductibleAmount : 0,
         trackInventory: form.trackInventory,
         inventoryQuantity: form.trackInventory ? form.inventoryQuantity : 0,
+        isLoanArticle: form.isLoanArticle,
         size: form.size.trim(),
         pickupLocationId: form.pickupLocationId,
         pickupLocationName: form.pickupLocationName,
@@ -202,6 +205,19 @@ export function ArticleForm() {
             />
           </FormField>
         ) : null}
+
+        <FormField label="Leihgewand">
+          <label className="flex items-center gap-2 text-[13.5px] text-gray-900">
+            <input
+              type="checkbox"
+              checked={form.isLoanArticle}
+              onChange={(e) => setForm({ ...form, isLoanArticle: e.target.checked, trackInventory: e.target.checked || form.trackInventory })}
+              className="h-4 w-4 rounded border-black/[0.25] accent-brand"
+            />
+            Als Leihgewand ausgeben und retournehmen
+          </label>
+          <p className="mt-1 text-[12.5px] text-black/45">Leihgewand führt immer einen Bestand, damit Rückgaben wieder eingebucht werden.</p>
+        </FormField>
 
         {error ? <p className="text-[13px] text-red-600">{error}</p> : null}
 

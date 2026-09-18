@@ -126,6 +126,16 @@ export function ArticleListPage() {
         ),
     },
     {
+      key: 'loan',
+      header: 'Leihgewand',
+      render: (a) =>
+        a.isLoanArticle ? (
+          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Leihgabe</span>
+        ) : (
+          <span className="text-black/35">–</span>
+        ),
+    },
+    {
       key: 'size',
       header: 'Größe',
       render: (a) => <EditableCell value={a.size} onCommit={(v) => void updateArticleField(a.id, 'size', v)} />,

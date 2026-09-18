@@ -40,7 +40,8 @@ export async function createArticle(input: ArticleInput): Promise<MatrixSyncResu
   await addDoc(articlesCollection, {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
-    inventoryQuantity: input.trackInventory ? input.inventoryQuantity : 0,
+    inventoryQuantity: input.trackInventory || input.isLoanArticle ? input.inventoryQuantity : 0,
+    trackInventory: input.trackInventory || input.isLoanArticle,
     active: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -52,7 +53,8 @@ export async function updateArticle(id: string, input: ArticleInput): Promise<Ma
   await updateDoc(doc(db, 'articles', id), {
     ...input,
     deductibleAmount: input.hasDeductible ? input.deductibleAmount : 0,
-    inventoryQuantity: input.trackInventory ? input.inventoryQuantity : 0,
+    inventoryQuantity: input.trackInventory || input.isLoanArticle ? input.inventoryQuantity : 0,
+    trackInventory: input.trackInventory || input.isLoanArticle,
     updatedAt: serverTimestamp(),
   })
   return syncArticleToMatrix(input.articleNumber, input.articleName)

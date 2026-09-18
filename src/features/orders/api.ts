@@ -34,10 +34,20 @@ function buildCreatedChanges(input: OrderInput): OrderHistoryChange[] {
   const changes: OrderHistoryChange[] = [
     { field: 'quantity', label: 'Menge', from: '', to: String(input.quantity) },
     { field: 'status', label: 'Status', from: '', to: input.status },
-    { field: 'orderDate', label: 'Datum', from: '', to: formatDateDe(input.orderDate) },
+    {
+      field: 'orderDate',
+      label: input.isLoanIssue ? 'Ausgabedatum' : 'Datum',
+      from: '',
+      to: formatDateDe(input.orderDate),
+    },
   ]
   if (input.comment) changes.push({ field: 'comment', label: 'Kommentar', from: '', to: input.comment })
   return changes
+}
+
+/** A returned loan is already back in stock; all other orders consume stock while they exist. */
+function affectsInventory(order: Pick<Order, 'isLoanIssue' | 'returnedDate'>): boolean {
+  return !order.isLoanIssue || !order.returnedDate
 }
 
 /** Diffs a full-form edit against the previous document — only changed fields are logged. */
@@ -63,7 +73,7 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
   if (before.orderDate !== after.orderDate) {
     changes.push({
       field: 'orderDate',
-      label: 'Datum',
+      label: before.isLoanIssue ? 'Ausgabedatum' : 'Datum',
       from: formatDateDe(before.orderDate),
       to: formatDateDe(after.orderDate),
     })
@@ -76,7 +86,16 @@ function buildOrderChanges(before: Order, after: OrderInput): OrderHistoryChange
 
 type OrderSnapshotFields = Pick<
   Order,
-  'statusId' | 'status' | 'employeeName' | 'articleName' | 'articleId' | 'quantity' | 'orderDate' | 'comment'
+  | 'statusId'
+  | 'status'
+  | 'employeeName'
+  | 'articleName'
+  | 'articleId'
+  | 'quantity'
+  | 'orderDate'
+  | 'comment'
+  | 'isLoanIssue'
+  | 'returnedDate'
 >
 
 /** Fetches the current status/employeeName/articleName/articleId/quantity/orderDate for each id — used to diff bulk status writes and restore inventory on bulk delete. */
@@ -97,6 +116,8 @@ async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, Orde
         quantity: data.quantity,
         orderDate: data.orderDate,
         comment: data.comment ?? '',
+        isLoanIssue: data.isLoanIssue ?? false,
+        returnedDate: data.returnedDate ?? '',
       })
     })
   }
@@ -175,6 +196,9 @@ export async function exchangeOrder(input: ExchangeOrderInput): Promise<string> 
     statusId: input.newStatusId,
     status: input.newStatus,
     orderDate: todayISO(),
+    isLoanIssue: false,
+    issuedDate: '',
+    returnedDate: '',
     exchangedFromOrderId: before.id,
     exchangedFromArticleName: articleDisplayLabel(before),
     exchangedToOrderId: '',
@@ -245,17 +269,38 @@ export async function updateOrder(id: string, input: OrderInput): Promise<void> 
     updatedAt: serverTimestamp(),
   })
   if (!before) return
+  const beforeAffectsInventory = affectsInventory(before)
+  const afterAffectsInventory = affectsInventory(input)
   if (before.articleId !== input.articleId) {
-    await adjustArticleInventory(before.articleId, before.quantity)
-    await adjustArticleInventory(input.articleId, -input.quantity)
-  } else if (before.quantity !== input.quantity) {
-    await adjustArticleInventory(input.articleId, before.quantity - input.quantity)
+    if (beforeAffectsInventory) await adjustArticleInventory(before.articleId, before.quantity)
+    if (afterAffectsInventory) await adjustArticleInventory(input.articleId, -input.quantity)
+  } else if (before.quantity !== input.quantity && (beforeAffectsInventory || afterAffectsInventory)) {
+    await adjustArticleInventory(input.articleId, (beforeAffectsInventory ? before.quantity : 0) - (afterAffectsInventory ? input.quantity : 0))
   }
   const changes = buildOrderChanges(before, input)
   if (changes.length === 0) return
   // A full-form edit that only touched the status is still a status transition — badge it as such.
   const action = changes.length === 1 && changes[0].field === 'status' ? 'status_changed' : 'updated'
   await logOrderHistory({ orderId: id, employeeName: input.employeeName, articleName: input.articleName, action, changes })
+}
+
+/** Marks an outstanding loan as returned on the existing order and restores its stock. */
+export async function returnLoanOrder(id: string): Promise<void> {
+  const before = await getOrder(id)
+  if (!before) throw new Error('Leihgabe nicht gefunden.')
+  if (!before.isLoanIssue) throw new Error('Diese Bestellung ist keine Leihgabe.')
+  if (before.returnedDate) throw new Error('Diese Leihgabe wurde bereits retourniert.')
+
+  const returnedDate = todayISO()
+  await updateDoc(doc(db, 'orders', id), { returnedDate, updatedAt: serverTimestamp() })
+  await adjustArticleInventory(before.articleId, before.quantity)
+  await logOrderHistory({
+    orderId: id,
+    employeeName: before.employeeName,
+    articleName: before.articleName,
+    action: 'returned',
+    changes: [{ field: 'returnedDate', label: 'Rückgabedatum', from: '', to: formatDateDe(returnedDate) }],
+  })
 }
 
 export async function updateOrderStatus(
@@ -294,7 +339,7 @@ export async function updateOrderQuantity(id: string, quantity: number): Promise
     updatedAt: serverTimestamp(),
   })
   if (!before || before.quantity === quantity) return
-  await adjustArticleInventory(before.articleId, before.quantity - quantity)
+  if (affectsInventory(before)) await adjustArticleInventory(before.articleId, before.quantity - quantity)
   await logOrderHistory({
     orderId: id,
     employeeName: before.employeeName,
@@ -340,7 +385,7 @@ export async function updateOrderComment(id: string, comment: string): Promise<v
 export async function deleteOrder(id: string): Promise<void> {
   const order = await getOrder(id)
   await deleteDoc(doc(db, 'orders', id))
-  if (order) await adjustArticleInventory(order.articleId, order.quantity)
+  if (order && affectsInventory(order)) await adjustArticleInventory(order.articleId, order.quantity)
 }
 
 export async function deleteOrders(ids: string[]): Promise<void> {
@@ -352,8 +397,10 @@ export async function deleteOrders(ids: string[]): Promise<void> {
     await batch.commit()
   }
   const restockByArticle = new Map<string, number>()
-  before.forEach(({ articleId, quantity }) => {
-    restockByArticle.set(articleId, (restockByArticle.get(articleId) ?? 0) + quantity)
+  before.forEach(({ articleId, quantity, isLoanIssue, returnedDate }) => {
+    if (affectsInventory({ isLoanIssue: isLoanIssue ?? false, returnedDate: returnedDate ?? '' })) {
+      restockByArticle.set(articleId, (restockByArticle.get(articleId) ?? 0) + quantity)
+    }
   })
   await Promise.all(
     Array.from(restockByArticle.entries()).map(([articleId, quantity]) => adjustArticleInventory(articleId, quantity)),

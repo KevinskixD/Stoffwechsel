@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<OrderHistoryAction, string> = {
   updated: 'Bearbeitet',
   status_changed: 'Statusänderung',
   exchanged: 'Umgetauscht',
+  returned: 'Retourniert',
 }
 
 const ACTION_COLORS: Record<OrderHistoryAction, { bg: string; fg: string }> = {
@@ -23,6 +24,7 @@ const ACTION_COLORS: Record<OrderHistoryAction, { bg: string; fg: string }> = {
   status_changed: { bg: 'var(--color-badge-amber-bg)', fg: 'var(--color-badge-amber-fg)' },
   updated: { bg: 'var(--color-badge-neutral-bg)', fg: 'var(--color-badge-neutral-fg)' },
   exchanged: { bg: 'var(--color-badge-red-bg)', fg: 'var(--color-badge-red-fg)' },
+  returned: { bg: 'var(--color-badge-green-bg)', fg: 'var(--color-badge-green-fg)' },
 }
 
 function ActionBadge({ action }: { action: OrderHistoryAction }) {
@@ -67,6 +69,7 @@ export function OrderHistoryPage() {
           <option value="updated">Bearbeitet</option>
           <option value="status_changed">Statusänderung</option>
           <option value="exchanged">Umgetauscht</option>
+          <option value="returned">Retourniert</option>
         </FilterSelect>
         <FilterField label="Von">
           <FilterDateInput value={dateFrom} onChange={setDateFrom} />

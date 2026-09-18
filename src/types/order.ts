@@ -16,6 +16,12 @@ export interface Order {
   status: string
   /** ISO date string, YYYY-MM-DD, no time component */
   orderDate: string
+  /** True when this order was created as the issue of a loan article. */
+  isLoanIssue: boolean
+  /** ISO date the loan item was issued; '' for regular orders. */
+  issuedDate: string
+  /** ISO date the loan item was returned; '' while it is still out. */
+  returnedDate: string
   /** FK to the order this one replaced via Umtausch; '' if not created through an exchange. */
   exchangedFromOrderId: string
   /** Denormalized label (articleDisplayLabel) of the replaced order's article. */
@@ -41,6 +47,9 @@ export type OrderInput = {
   statusId: string
   status: string
   orderDate: string
+  isLoanIssue: boolean
+  issuedDate: string
+  returnedDate: string
   exchangedFromOrderId: string
   exchangedFromArticleName: string
   exchangedToOrderId: string

@@ -20,6 +20,7 @@ interface PendingLine {
   articleNumber: string
   articleSize: string
   pickupLocationName: string
+  isLoanIssue: boolean
   projected: number | null
 }
 
@@ -94,6 +95,7 @@ export function StarterKitOrderForm() {
           articleNumber: article.articleNumber,
           articleSize: article.size,
           pickupLocationName: article.pickupLocationName,
+          isLoanIssue: article.isLoanArticle,
           projected: article.trackInventory ? article.inventoryQuantity - 1 : null,
         }
       })
@@ -117,6 +119,9 @@ export function StarterKitOrderForm() {
           statusId,
           status,
           orderDate,
+          isLoanIssue: line.isLoanIssue,
+          issuedDate: line.isLoanIssue ? orderDate : '',
+          returnedDate: '',
           exchangedFromOrderId: '',
           exchangedFromArticleName: '',
           exchangedToOrderId: '',
