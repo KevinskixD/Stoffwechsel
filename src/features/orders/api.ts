@@ -169,6 +169,18 @@ export async function getOrder(id: string): Promise<Order | null> {
   return snapshot.exists() ? snapshot.data() : null
 }
 
+/** Loads orders for selected employee records so a merge can preview exactly what will move. */
+export async function getOrdersForEmployeeIds(employeeIds: string[]): Promise<Order[]> {
+  const ids = Array.from(new Set(employeeIds.filter(Boolean)))
+  const orders: Order[] = []
+  for (let i = 0; i < ids.length; i += IN_QUERY_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + IN_QUERY_CHUNK_SIZE)
+    const snapshot = await getDocs(query(ordersCollection.withConverter(orderConverter), where('employeeId', 'in', chunk)))
+    snapshot.docs.forEach((docSnap) => orders.push(docSnap.data()))
+  }
+  return orders.sort((a, b) => b.orderDate.localeCompare(a.orderDate))
+}
+
 export interface ExchangeOrderInput {
   oldOrderId: string
   newArticleId: string

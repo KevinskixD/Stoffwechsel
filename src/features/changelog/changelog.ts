@@ -19,6 +19,13 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.6',
+    date: '2026-09-18',
+    changes: [
+      { type: 'verbessert', text: 'Vor dem Zusammenführen zeigt eine Vorschau alle betroffenen Bestellungen und Leihgaben.' },
+    ],
+  },
+  {
     version: '0.1.5',
     date: '2026-09-18',
     changes: [

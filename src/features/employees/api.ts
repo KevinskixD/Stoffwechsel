@@ -15,7 +15,8 @@ import {
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
 import type { Employee, EmployeeInput } from '../../types/employee'
-import { reassignOrdersEmployee } from '../orders/api'
+import { getOrdersForEmployeeIds, reassignOrdersEmployee } from '../orders/api'
+import type { Order } from '../../types/order'
 
 const employeeConverter = createConverter<Employee>()
 const employeesCollection = collection(db, 'employees')
@@ -101,6 +102,11 @@ export async function mergeEmployees(target: Pick<Employee, 'id' | 'firstName' |
   )
   await deleteEmployees(duplicates)
   return reassignedOrders
+}
+
+/** Preview helper for the merge dialog; the selected target's own orders are filtered in the UI. */
+export async function getEmployeeMergeOrders(employeeIds: string[]): Promise<Order[]> {
+  return getOrdersForEmployeeIds(employeeIds)
 }
 
 /** Swaps firstName/lastName for each given employee — for fixing an import whose column mapping was reversed. */

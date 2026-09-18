@@ -11,10 +11,12 @@ import { useToast } from '../../shared/components/ToastProvider'
 import { useRowSelection } from '../../shared/hooks/useRowSelection'
 import { matchesAllTokens } from '../../shared/utils/search'
 import type { Employee } from '../../types/employee'
+import type { Order } from '../../types/order'
 import {
   deleteAllEmployees,
   deleteEmployee,
   deleteEmployees,
+  getEmployeeMergeOrders,
   mergeEmployees,
   setEmployeeActive,
   swapEmployeeNames,
@@ -35,6 +37,8 @@ export function EmployeeListPage() {
   const [mergeTargetId, setMergeTargetId] = useState('')
   const [mergeBusy, setMergeBusy] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
+  const [mergePreviewError, setMergePreviewError] = useState<string | null>(null)
+  const [mergeOrders, setMergeOrders] = useState<Order[] | null>(null)
   const { showToast } = useToast()
   const { data: employees, loading } = useEmployees(showInactive)
 
@@ -47,6 +51,14 @@ export function EmployeeListPage() {
     setPendingMerge(selected)
     setMergeTargetId(selected[0].id)
     setMergeError(null)
+    setMergePreviewError(null)
+    setMergeOrders(null)
+    void getEmployeeMergeOrders(selected.map((employee) => employee.id))
+      .then(setMergeOrders)
+      .catch((err) => {
+        setMergeOrders([])
+        setMergePreviewError(err instanceof Error ? err.message : 'Bestellungen konnten nicht geladen werden.')
+      })
   }
 
   async function confirmMerge() {
@@ -220,14 +232,18 @@ export function EmployeeListPage() {
       <MergeEmployeesDialog
         employees={pendingMerge ?? []}
         targetId={mergeTargetId}
+        orders={mergeOrders}
         busy={mergeBusy}
         error={mergeError}
+        previewError={mergePreviewError}
         onTargetChange={setMergeTargetId}
         onConfirm={() => void confirmMerge()}
         onCancel={() => {
           if (mergeBusy) return
           setPendingMerge(null)
           setMergeError(null)
+          setMergePreviewError(null)
+          setMergeOrders(null)
         }}
       />
 
