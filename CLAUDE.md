@@ -191,12 +191,54 @@ touching this:
   change that would push it below zero — bridged via a resolver held in local state, since
   `ConfirmDialog` is callback-based, not promise-based.
 
+### Loan garment issue/return (Leihgabe)
+
+`Article.isLoanArticle` forces `trackInventory` on (both are toggled together in `ArticleForm`).
+Ordering a loan article automatically sets `Order.isLoanIssue`/`issuedDate` and pins the status to
+the dedicated `'issued'` semantic key (name "Ausgegeben") — this status is filtered out of every
+normal status dropdown/select (`OrderForm`, `OrderListPage`, `StarterKitOrderForm`) so it can't be
+picked or changed manually. `Order.returnRequired` (default `true`) supports loan issues that are
+never expected back (e.g. consumables tracked as loan stock); when `false`, the order behaves like
+a permanent stock deduction instead.
+
+The choke point for all of this is `affectsInventory(order)` in `orders/api.ts` — roughly
+`!isLoanIssue || returnRequired === false || !returnedDate` — which every inventory-touching
+function (`updateOrder`, `updateOrderQuantity`, `deleteOrder`, `deleteOrders`) now gates its
+`adjustArticleInventory` call on. This exists because a loan that's already been returned is
+already back in stock; without the gate, deleting or editing a returned loan order would restock it
+a second time. `returnLoanOrder()` is the *only* place that sets `returnedDate` and performs the
+one-time restock, guarded against double-return and against `returnRequired === false` loans.
+
+`ensureSeedData()` (`src/firebase/seed.ts`) gives the `'issued'` status a stable, reused doc ref
+(unlike the other seeded statuses, which get random IDs) — it reuses a manually-created status
+literally named "Ausgegeben" if one exists, else a fixed doc id `'issued'` — and one-time-backfills
+`statusId`/`status` on any pre-existing `isLoanIssue` orders that predate this feature. Because that
+backfill re-runs its match check on every app start against *all* `isLoanIssue` orders, the status
+badge for loan orders cannot be changed by writing a different `statusId`/`status` to Firestore — it
+would just get reset back to "Ausgegeben". For this reason the "Retourniert" badge shown once an
+order is returned (`OrderListPage.tsx`) is a purely client-side label derived from `returnedDate`,
+not a real stored status — don't try to "fix" this into a real status doc without also updating the
+seed migration and `OrderForm`'s forced status-set on save.
+
+### Employee merge
+
+`mergeEmployees(target, sourceIds)` (`src/features/employees/api.ts`) merges duplicate employee
+records: `reassignOrdersEmployee` (chunked `where('employeeId', 'in', …)` queries) rewrites the
+denormalized `employeeId`/`employeeName` on every affected order to the target employee, logs one
+`orderHistory` entry per reassigned order, then the source employee docs are hard-deleted via the
+existing `deleteEmployees`. This is essentially a bulk, cross-employee variant of the
+already-existing `updateOrderEmployeeNames` resync helper (see "Orders denormalize employee/article
+data" above). Loan-issue orders are deliberately not special-cased — only the employee FK/name
+changes, loan/return state on the order is untouched. `MergeEmployeesDialog.tsx` fetches a live
+preview (`getEmployeeMergeOrders`) of exactly which orders will move before the merge is confirmed.
+
 ### Order-to-order exchange (Umtausch)
 
 `exchangeOrder` (`src/features/orders/api.ts`) implements the "Umtausch" flow: a row action on
-`OrderListPage` (visible only when `status === 'Abgeholt'` and the order hasn't been exchanged
-already) opens `ExchangeOrderDialog.tsx`, which picks a replacement article and a status for the
-new order. `exchangeOrder` then creates that new order and marks the old one's status as
+`OrderListPage` (visible only when the status has the `'notified'` semantic key — "Informiert" —
+and the order hasn't been exchanged already) opens `ExchangeOrderDialog.tsx`, which picks a
+replacement article and a status for the new order. `exchangeOrder` then creates that new order and
+marks the old one's status as
 `'Umtausch'`, linking the two both ways via `exchangedFromOrderId`/`exchangedToOrderId` (plus
 denormalized `exchangedFromArticleName`/`exchangedToArticleName` snapshots — fields on `Order` in
 `src/types/order.ts`). This is the **only order-to-order FK in the schema** — every other order
@@ -205,6 +247,13 @@ Inventory moves in both directions in the same call: the old article is restocke
 consumed. Because a full-form edit via `OrderForm` overwrites the entire `OrderInput`, the four
 exchange fields are loaded into and resubmitted from `FormState` unchanged (no UI exposes them) —
 editing an exchanged order must not silently drop the link.
+
+`bestellMailText.ts` (`renderBestellMailText`) generates a plain-text mail body from the orders
+included in a generated Bestelldatei, previewed in `BestellMailPreviewDialog.tsx` with a
+clipboard-copy button. The greeting, boilerplate phrasing, and signature line are hardcoded German
+text (not a configurable template like `notificationSettings`) — a deliberate personal-workflow
+shortcut, not an oversight; anyone reusing this app under a different name/process needs to edit
+`bestellMailText.ts` directly.
 
 ### Import wizard
 
