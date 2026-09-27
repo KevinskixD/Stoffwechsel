@@ -8,6 +8,9 @@ export interface NotificationSettings {
   triggerStatusId: string
   /** '' until configured. */
   targetStatusId: string
+  /** Text for informing employees about outstanding loan articles. */
+  loanGreetingTemplate: string
+  loanLineTemplate: string
   updatedAt: Date
 }
 
@@ -18,3 +21,9 @@ export const DEFAULT_GREETING_TEMPLATE =
   'Bitte bei Zeiten abholen, Danke!\n\nLiebe Grüße\nKevin'
 
 export const DEFAULT_LINE_TEMPLATE = '* {{MENGE}}x {{ARTIKEL}} ({{ABHOLORT}})'
+
+export const DEFAULT_LOAN_GREETING_TEMPLATE =
+  'Hallo {{VORNAME}},\n\nlaut unserer Übersicht hast du noch folgende Leihgaben:\n\n{{POSITIONEN}}\n\n' +
+  'Bitte gib die Artikel bei Gelegenheit zurück oder melde dich bei mir, falls die Angaben nicht mehr aktuell sind.\n\nLiebe Grüße\nKevin'
+
+export const DEFAULT_LOAN_LINE_TEMPLATE = '* {{MENGE}}x {{ARTIKEL}} (ausgegeben am {{AUSGABEDATUM}})'

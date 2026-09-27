@@ -40,6 +40,7 @@ const NAV_ITEMS: NavItemDef[] = [
     match: (path) =>
       path.startsWith('/orders') &&
       !path.startsWith('/orders/pickup-ready') &&
+      !path.startsWith('/orders/loan-notifications') &&
       !path.startsWith('/orders/history'),
   },
   {
@@ -47,6 +48,12 @@ const NAV_ITEMS: NavItemDef[] = [
     label: 'Abholbereit',
     Icon: OrdersIcon,
     match: (path) => path.startsWith('/orders/pickup-ready'),
+  },
+  {
+    to: '/orders/loan-notifications',
+    label: 'Leihgaben informieren',
+    Icon: OrdersIcon,
+    match: (path) => path.startsWith('/orders/loan-notifications'),
   },
   {
     to: '/orders/history',
@@ -88,6 +95,12 @@ const SETTINGS_ITEMS: NavItemDef[] = [
     label: 'Benachrichtigung',
     Icon: GearIcon,
     match: (path) => path === '/settings/notifications',
+  },
+  {
+    to: '/settings/loan-notifications',
+    label: 'Leihgabe-Benachrichtigung',
+    Icon: GearIcon,
+    match: (path) => path === '/settings/loan-notifications',
   },
   {
     to: '/settings/bestellformular',

@@ -19,6 +19,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.8',
+    date: '2026-09-27',
+    changes: [
+      { type: 'neu', text: 'Mitarbeiter mit offenen Leihgaben können mit einer anpassbaren Rückgabebitte informiert werden.' },
+      { type: 'verbessert', text: 'Nach dem Informieren verschwindet die Leihgabe aus der Benachrichtigungsliste; die Bestellung zeigt „Erinnert am“ mit Datum.' },
+      { type: 'verbessert', text: 'Retourniertes Leihgewand wird in der Bestellübersicht als „Retourniert“ angezeigt.' },
+    ],
+  },
+  {
     version: '0.1.7',
     date: '2026-09-27',
     changes: [

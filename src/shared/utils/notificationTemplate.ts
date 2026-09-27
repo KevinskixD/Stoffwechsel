@@ -3,6 +3,7 @@ export interface NotificationLineData {
   articleName: string
   articleSize: string
   pickupLocationName: string
+  issuedDate?: string
 }
 
 function fillPlaceholders(template: string, values: Record<string, string>): string {
@@ -25,6 +26,7 @@ export function renderNotificationLine(lineTemplate: string, line: NotificationL
     ARTIKEL: line.articleName,
     GROESSE: line.articleSize,
     ABHOLORT: line.pickupLocationName || '—',
+    AUSGABEDATUM: line.issuedDate || '—',
   })
 }
 

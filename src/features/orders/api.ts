@@ -18,9 +18,9 @@ import {
 import { db } from '../../firebase/config'
 import { createConverter } from '../../firebase/converters'
 import { articleDisplayLabel } from '../../types/article'
-import type { Order, OrderInput } from '../../types/order'
+import { hasLoanReturnNotification, type Order, type OrderInput } from '../../types/order'
 import type { OrderHistoryChange } from '../../types/orderHistory'
-import { formatDateDe, todayISO } from '../../shared/utils/date'
+import { formatDateDe, formatDateTimeDe, todayISO } from '../../shared/utils/date'
 import { logOrderHistory } from '../orderHistory/api'
 import { adjustArticleInventory } from '../articles/api'
 
@@ -105,6 +105,7 @@ type OrderSnapshotFields = Pick<
   | 'isLoanIssue'
   | 'returnRequired'
   | 'returnedDate'
+  | 'loanReturnNotificationAt'
 >
 
 /** Fetches the current status/employeeName/articleName/articleId/quantity/orderDate for each id — used to diff bulk status writes and restore inventory on bulk delete. */
@@ -128,6 +129,7 @@ async function fetchOrderSnapshotsByIds(ids: string[]): Promise<Map<string, Orde
         isLoanIssue: data.isLoanIssue ?? false,
         returnRequired: data.returnRequired ?? true,
         returnedDate: data.returnedDate ?? '',
+        loanReturnNotificationAt: data.loanReturnNotificationAt ?? '',
       })
     })
   }
@@ -521,6 +523,43 @@ export async function markOrdersAsNotified(
       })
     }),
   )
+}
+
+/** Records a return reminder on the original outstanding loan orders without changing their status. */
+export async function markLoanOrdersAsNotified(ids: string[], employeeName: string): Promise<void> {
+  const before = await fetchOrderSnapshotsByIds(ids)
+  const invalid = ids.some((id) => {
+    const order = before.get(id)
+    return !order || !order.isLoanIssue || order.returnRequired === false || !!order.returnedDate ||
+      hasLoanReturnNotification(order) || order.employeeName !== employeeName
+  })
+  if (invalid) throw new Error('Die Leihgaben haben sich geändert. Bitte die Seite prüfen und erneut öffnen.')
+
+  const notifiedAt = new Date()
+  const notificationNote = `${employeeName} am ${formatDateTimeDe(notifiedAt)} über die Rückgabe der Leihgabe informiert.`
+  // Each order update and its history entry commit together (two writes per order).
+  for (let i = 0; i < ids.length; i += BATCH_SIZE / 2) {
+    const batch = writeBatch(db)
+    ids.slice(i, i + BATCH_SIZE / 2).forEach((id) => {
+      const order = before.get(id)!
+      const previousComment = order.comment
+      const comment = previousComment ? `${notificationNote}\n${previousComment}` : notificationNote
+      batch.update(doc(db, 'orders', id), {
+        comment,
+        loanReturnNotificationAt: notifiedAt.toISOString(),
+        updatedAt: serverTimestamp(),
+      })
+      batch.set(doc(collection(db, 'orderHistory')), {
+        orderId: id,
+        employeeName: order.employeeName,
+        articleName: order.articleName,
+        action: 'updated',
+        changes: [{ field: 'comment', label: 'Kommentar', from: previousComment, to: comment }],
+        createdAt: serverTimestamp(),
+      })
+    })
+    await batch.commit()
+  }
 }
 
 /**

@@ -8,7 +8,7 @@ export interface StatusColor {
 // is given an explicit color, and as the initial value offered in the color picker.
 const RED_STATUSES = new Set(['zu bestellen', 'umtausch'])
 const AMBER_STATUSES = new Set(['bestellt', 'geliefert', 'informiert'])
-const GREEN_STATUSES = new Set(['abgeholt', 'abgeschlossen'])
+const GREEN_STATUSES = new Set(['abgeholt', 'abgeschlossen', 'retourniert'])
 
 const RED_HEX = '#f4dcdb'
 const AMBER_HEX = '#fdf3d9'

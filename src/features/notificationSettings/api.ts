@@ -3,6 +3,8 @@ import { db } from '../../firebase/config'
 import {
   DEFAULT_GREETING_TEMPLATE,
   DEFAULT_LINE_TEMPLATE,
+  DEFAULT_LOAN_GREETING_TEMPLATE,
+  DEFAULT_LOAN_LINE_TEMPLATE,
   NOTIFICATION_SETTINGS_DOC_ID,
   type NotificationSettings,
 } from '../../types/notificationSettings'
@@ -16,6 +18,8 @@ export function defaultNotificationSettings(): NotificationSettings {
     lineTemplate: DEFAULT_LINE_TEMPLATE,
     triggerStatusId: '',
     targetStatusId: '',
+    loanGreetingTemplate: DEFAULT_LOAN_GREETING_TEMPLATE,
+    loanLineTemplate: DEFAULT_LOAN_LINE_TEMPLATE,
     updatedAt: new Date(),
   }
 }
@@ -28,6 +32,8 @@ function fromSnapshot(data: Record<string, unknown> | undefined): NotificationSe
     lineTemplate: (data.lineTemplate as string | undefined) ?? DEFAULT_LINE_TEMPLATE,
     triggerStatusId: (data.triggerStatusId as string | undefined) ?? '',
     targetStatusId: (data.targetStatusId as string | undefined) ?? '',
+    loanGreetingTemplate: (data.loanGreetingTemplate as string | undefined) ?? DEFAULT_LOAN_GREETING_TEMPLATE,
+    loanLineTemplate: (data.loanLineTemplate as string | undefined) ?? DEFAULT_LOAN_LINE_TEMPLATE,
     updatedAt: new Date(),
   }
 }
@@ -43,6 +49,12 @@ export function subscribeNotificationSettings(onChange: (settings: NotificationS
 
 export async function saveNotificationSettings(
   patch: Pick<NotificationSettings, 'greetingTemplate' | 'lineTemplate' | 'triggerStatusId' | 'targetStatusId'>,
+): Promise<void> {
+  await setDoc(settingsRef(), { ...patch, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export async function saveLoanNotificationSettings(
+  patch: Pick<NotificationSettings, 'loanGreetingTemplate' | 'loanLineTemplate'>,
 ): Promise<void> {
   await setDoc(settingsRef(), { ...patch, updatedAt: serverTimestamp() }, { merge: true })
 }

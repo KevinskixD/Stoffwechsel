@@ -24,6 +24,8 @@ export interface Order {
   returnedDate: string
   /** Only relevant to loan issues. False means the item stays permanently issued. */
   returnRequired: boolean
+  /** ISO timestamp of the return notification; absent on orders that have not been notified. */
+  loanReturnNotificationAt?: string
   /** FK to the order this one replaced via Umtausch; '' if not created through an exchange. */
   exchangedFromOrderId: string
   /** Denormalized label (articleDisplayLabel) of the replaced order's article. */
@@ -66,4 +68,28 @@ export interface OrderFilters {
   dateFrom?: string
   dateTo?: string
   searchTerm?: string
+}
+
+const LOAN_RETURN_NOTE = /(?:^|\n)[^\n]* am (\d{2}\.\d{2}\.\d{4}), \d{2}:\d{2} über die Rückgabe der Leihgabe informiert\.(?=\n|$)/
+
+/** Also recognizes notes created before the notification timestamp was stored separately. */
+export function loanReturnNotificationDate(order: Pick<Order, 'loanReturnNotificationAt' | 'comment'>): string {
+  if (order.loanReturnNotificationAt) {
+    const date = new Date(order.loanReturnNotificationAt)
+    if (!Number.isNaN(date.getTime())) {
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      return `${day}.${month}.${date.getFullYear()}`
+    }
+  }
+  return order.comment?.match(LOAN_RETURN_NOTE)?.[1] ?? ''
+}
+
+export function hasLoanReturnNotification(order: Pick<Order, 'loanReturnNotificationAt' | 'comment'>): boolean {
+  return Boolean(loanReturnNotificationDate(order))
+}
+
+/** Keeps the automatic reminder in the saved comment, but leaves it out of the list preview. */
+export function orderCommentPreview(order: Pick<Order, 'isLoanIssue' | 'comment'>): string {
+  return order.isLoanIssue ? (order.comment ?? '').replace(LOAN_RETURN_NOTE, '').trim() : order.comment ?? ''
 }

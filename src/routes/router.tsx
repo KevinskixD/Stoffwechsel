@@ -11,6 +11,7 @@ import { EmployeeForm } from '../features/employees/EmployeeForm'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage'
 import { HelpPage } from '../features/help/HelpPage'
 import { NotificationSettingsPage } from '../features/notificationSettings/NotificationSettingsPage'
+import { LoanNotificationSettingsPage } from '../features/notificationSettings/LoanNotificationSettingsPage'
 import { OrderHistoryPage } from '../features/orderHistory/OrderHistoryPage'
 import { OrderListSettingsPage } from '../features/orderListSettings/OrderListSettingsPage'
 import { OrderStatusSettingsPage } from '../features/orderStatuses/OrderStatusSettingsPage'
@@ -18,6 +19,7 @@ import { orderImportConfig } from '../features/orders/orderImportConfig'
 import { OrderForm } from '../features/orders/OrderForm'
 import { OrderListPage } from '../features/orders/OrderListPage'
 import { PickupReadyPage } from '../features/orders/PickupReadyPage'
+import { LoanNotificationPage } from '../features/orders/LoanNotificationPage'
 import { PickupLocationSettingsPage } from '../features/pickupLocations/PickupLocationSettingsPage'
 import { ByArticleReportPage } from '../features/reports/ByArticleReportPage'
 import { ByDateRangeReportPage } from '../features/reports/ByDateRangeReportPage'
@@ -39,6 +41,7 @@ export function AppRoutes() {
 
       <Route path="/orders" element={<OrderListPage />} />
       <Route path="/orders/pickup-ready" element={<PickupReadyPage />} />
+      <Route path="/orders/loan-notifications" element={<LoanNotificationPage />} />
       <Route path="/orders/history" element={<OrderHistoryPage />} />
       <Route path="/orders/new" element={<OrderForm />} />
       <Route path="/orders/starter-kit" element={<StarterKitOrderForm />} />
@@ -63,6 +66,7 @@ export function AppRoutes() {
       <Route path="/settings/pickup-locations" element={<PickupLocationSettingsPage />} />
       <Route path="/settings/starter-kit" element={<StarterKitSettingsPage />} />
       <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+      <Route path="/settings/loan-notifications" element={<LoanNotificationSettingsPage />} />
       <Route path="/settings/bestellformular" element={<BestellFormularSettingsPage />} />
       <Route path="/settings/order-list-buttons" element={<OrderListSettingsPage />} />
       <Route path="/settings/backup" element={<BackupSettingsPage />} />

@@ -19,7 +19,7 @@ import { statusColors } from '../../shared/utils/statusColors'
 import { articleDisplayLabel } from '../../types/article'
 import { employeeDisplayName } from '../../types/employee'
 import { hasOrderStatusSemanticKey } from '../../types/orderStatus'
-import type { Order } from '../../types/order'
+import { loanReturnNotificationDate, orderCommentPreview, type Order } from '../../types/order'
 import { useArticles } from '../articles/hooks'
 import { generateBestelldateien } from '../bestellFormular/generate'
 import { useBestellFormularSettings } from '../bestellFormular/hooks'
@@ -174,8 +174,10 @@ export function OrderListPage() {
     {
       key: 'articleName',
       header: 'Artikel',
-      render: (o) => (
-        <div>
+      render: (o) => {
+        const commentPreview = orderCommentPreview(o)
+        const reminderDate = o.isLoanIssue ? loanReturnNotificationDate(o) : ''
+        return <div>
           {articleDisplayLabel(o)}
           {commentEditor?.orderId === o.id ? (
             <div className="mt-1.5 max-w-[34rem]">
@@ -200,12 +202,12 @@ export function OrderListPage() {
                 </button>
               </div>
             </div>
-          ) : o.comment ? (
+          ) : commentPreview ? (
             <p
               title={o.comment}
               className="mt-0.5 max-w-[34rem] line-clamp-2 whitespace-pre-line text-xs leading-4 text-black/55"
             >
-              {o.comment}
+              {commentPreview}
             </p>
           ) : null}
           {o.exchangedToOrderId ? (
@@ -225,17 +227,20 @@ export function OrderListPage() {
             </Link>
           ) : null}
           {o.isLoanIssue ? (
-            <p className="mt-1 text-xs text-black/55">
-              Leihgabe · Ausgabe: {formatDateDe(o.issuedDate || o.orderDate)}
-              {o.returnRequired !== false
-                ? o.returnedDate
-                  ? ` · Rückgabe: ${formatDateDe(o.returnedDate)}`
-                  : ' · Rückgabe offen'
-                : ' · keine Rückgabe vorgesehen'}
-            </p>
+            <>
+              <p className="mt-1 text-xs text-black/55">
+                Leihgabe · Ausgabe: {formatDateDe(o.issuedDate || o.orderDate)}
+                {o.returnRequired !== false
+                  ? o.returnedDate
+                    ? ` · Rückgabe: ${formatDateDe(o.returnedDate)}`
+                    : ' · Rückgabe offen'
+                  : ' · keine Rückgabe vorgesehen'}
+              </p>
+              {reminderDate ? <p className="text-xs text-black/55">Erinnert am: {reminderDate}</p> : null}
+            </>
           ) : null}
         </div>
-      ),
+      },
     },
     {
       key: 'quantity',
@@ -258,14 +263,18 @@ export function OrderListPage() {
       header: 'Status',
       align: 'center',
       render: (o) => {
-        const c = statusColors(allOrderStatuses.find((s) => s.id === o.statusId) ?? { name: o.status })
         if (o.isLoanIssue) {
+          // returnLoanOrder() only sets returnedDate, not statusId/status (that field stays pinned to the
+          // "issued" semantic status by OrderForm/ensureSeedData) — derive the returned state for display.
+          const label = o.returnedDate ? 'Retourniert' : o.status
+          const c = statusColors({ name: label })
           return (
             <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: c.bg, color: c.fg }}>
-              {o.status}
+              {label}
             </span>
           )
         }
+        const c = statusColors(allOrderStatuses.find((s) => s.id === o.statusId) ?? { name: o.status })
         const selectableStatuses = activeOrderStatuses.filter((s) => !hasOrderStatusSemanticKey(s, 'issued'))
         return (
           <select
