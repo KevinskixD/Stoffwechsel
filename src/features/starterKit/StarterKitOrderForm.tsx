@@ -256,12 +256,13 @@ export function StarterKitOrderForm() {
                         onChange={(e) => setIncluded((prev) => ({ ...prev, [category.id]: e.target.checked }))}
                         className="size-4 rounded border-black/20 accent-brand"
                       />
-                      <span className="flex-1 text-[13.5px] font-semibold text-gray-900">{category.label}</span>
+                      <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-gray-900">{category.label}</span>
                       <select
                         value={selectedArticleId[category.id] ?? validArticles[0].id}
                         onChange={(e) => setSelectedArticleId((prev) => ({ ...prev, [category.id]: e.target.value }))}
                         disabled={!isIncluded}
-                        className="rounded-lg border border-black/[0.14] px-3 py-1.5 text-[13.5px] disabled:opacity-50"
+                        title={validArticles.find((article) => article.id === (selectedArticleId[category.id] ?? validArticles[0].id))?.articleName}
+                        className="w-[44%] min-w-0 max-w-[220px] rounded-lg border border-black/[0.14] bg-surface px-2.5 py-1.5 text-[13.5px] text-gray-900 focus:border-brand focus:outline-none disabled:opacity-50 sm:px-3"
                       >
                         {validArticles.map((article) => (
                           <option key={article.id} value={article.id}>

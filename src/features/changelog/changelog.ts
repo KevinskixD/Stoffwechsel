@@ -19,6 +19,13 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.7',
+    date: '2026-09-27',
+    changes: [
+      { type: 'verbessert', text: 'Die Artikelauswahl der Basisausrüstung bleibt auch bei langen Bezeichnungen übersichtlich.' },
+    ],
+  },
+  {
     version: '0.1.6',
     date: '2026-09-18',
     changes: [
