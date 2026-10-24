@@ -23,7 +23,7 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     return onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser && firebaseUser.email !== ALLOWED_EMAIL) {
+      if (firebaseUser && (firebaseUser.email !== ALLOWED_EMAIL || !firebaseUser.emailVerified)) {
         signOut(auth)
         setError('Dieser Google-Account ist nicht autorisiert.')
         setUser(null)
