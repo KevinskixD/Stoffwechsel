@@ -11,7 +11,9 @@ Authentication (Google Sign-In) restricted to a single authorized account; no mu
 
 ## Commands
 
-- `npm run dev` — start dev server
+- `npm run dev` — start dev server (localhost only; for testing on a phone use `npm run dev -- --host`)
+- `firebase deploy --only hosting --project uniformverwaltung-lieboch` — run after `npm run build`;
+  rules/indexes deploy and details: see "Deployment" below
 - `npm run build` — typecheck (`tsc -b`) then production build; the two are separate steps, a
   build can fail on typecheck even if Vite itself would succeed
 - `npm run lint` — oxlint (see `.oxlintrc.json`; `react/rules-of-hooks` is an error, not just a warning)
@@ -113,7 +115,7 @@ was chosen over cursor pagination, while still keeping live `onSnapshot` updates
 account permitted to sign in. `src/firebase/converters.ts` has one generic `createConverter<T>()`
 used by every collection: it strips `id` on write (Firestore stores it as the doc ID) and hydrates
 `createdAt`/`updatedAt` Timestamps into `Date` on read. Every collection this app owns must be
-individually allow-listed in `firestore.rules` (currently 12 collections/singletons); all other
+individually allow-listed in `firestore.rules` (currently 11 collections/singletons); all other
 paths are denied by the top-level catch-all. `src/features/backup/api.ts` doubles as the
 authoritative list — it enumerates every collection/singleton for export/restore, so a newly added
 collection needs an entry there too, or it's silently excluded from backups.
@@ -130,7 +132,8 @@ still a drift bug worth avoiding).
 `src/shared/hooks/useAuth.ts` wraps `onAuthStateChanged` and exposes `user`/`loading`/`error` plus
 `signIn`/`signOutUser`; called directly wherever needed (in `App.tsx` and in `Sidebar.tsx`) rather
 than through a context, mirroring the existing `useTheme()` pattern. If a signed-in Google account's
-email doesn't match `ALLOWED_EMAIL`, the hook immediately calls `signOut` and surfaces an inline
+email doesn't match `ALLOWED_EMAIL` or isn't verified (mirrors `email_verified` in
+`isAuthorized()`), the hook immediately calls `signOut` and surfaces an inline
 error — this is a UX convenience only, not the real security boundary (see "Firestore access model"
 above). `App.tsx`'s gate order matters: auth must resolve (and the user must be signed in) *before*
 `ensureSeedData()` fires, since seeding writes to Firestore and would fail under `firestore.rules`
@@ -358,3 +361,15 @@ article size backfill, and `OrderListPage`'s bulk-action messages.
 summaries, and other context-bound inline messages — these need to stay visible rather than
 auto-dismiss. When adding a new success/error message: transient, non-actionable messages → toast;
 messages the user needs in order to act (e.g. which field a validation error refers to) → inline.
+
+### Deployment (Firebase Hosting)
+
+Live unter `https://uniformverwaltung-lieboch.web.app` (Spark-Tarif). Deploy:
+```
+npm run build
+firebase deploy --only firestore:rules,firestore:indexes,hosting --project uniformverwaltung-lieboch
+```
+`firebase.json` setzt einen SPA-Rewrite und Security-Header inkl. strikter CSP (kein
+`'unsafe-inline'` für Skripte — deshalb liegt das Theme-Init-Skript als `public/theme-init.js`
+statt inline in `index.html`). Wird eine neue externe Domain angesprochen (Skripte, Bilder,
+`connect-src`), muss die CSP dort ergänzt werden, sonst blockiert der Browser die Anfrage.
