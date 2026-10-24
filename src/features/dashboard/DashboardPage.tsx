@@ -52,7 +52,7 @@ export function DashboardPage() {
       label: 'Artikel im Sortiment',
       value: articles.length,
       delta: 'aktive Artikel',
-      deltaColor: 'rgba(0,0,0,0.45)',
+      deltaColor: 'color-mix(in oklab, var(--color-black) 45%, transparent)',
     },
   ]
 
