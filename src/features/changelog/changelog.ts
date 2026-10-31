@@ -19,6 +19,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.9',
+    date: '2026-10-31',
+    changes: [
+      { type: 'neu', text: 'Der Mailtext zur Bestellliste enthält jetzt die Kommentare der Bestellungen als eigenen Abschnitt „Anmerkungen“.' },
+      { type: 'fix', text: 'Der Hinweistext „aktive Artikel“ im Dashboard ist im Dark Mode wieder gut lesbar.' },
+      { type: 'hinweis', text: 'Die Anwendung ist jetzt auch außerhalb des Heimnetzes erreichbar; der Zugriff bleibt auf das autorisierte Google-Konto beschränkt.' },
+    ],
+  },
+  {
     version: '0.1.8',
     date: '2026-09-27',
     changes: [
