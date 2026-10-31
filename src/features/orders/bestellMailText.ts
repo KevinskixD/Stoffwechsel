@@ -1,6 +1,6 @@
 import { splitEmployeeName } from '../../shared/utils/notificationTemplate'
 import { articleDisplayLabel } from '../../types/article'
-import type { Order } from '../../types/order'
+import { orderCommentPreview, type Order } from '../../types/order'
 
 function displayEmployeeName(employeeName: string): string {
   const { firstName, lastName } = splitEmployeeName(employeeName)
@@ -19,11 +19,20 @@ export function renderBestellMailText(orders: Order[], date = new Date()): strin
         'Ich deponiere den Umtauschartikel bei den Hauptis und bitte diese, den Umtauschartikel auf die Bezirksstelle mitzunehmen.',
     )
 
+  const commentNotes = orders
+    .map((order) => ({ order, comment: orderCommentPreview(order).replace(/\s*\n\s*/g, ' ').trim() }))
+    .filter(({ comment }) => comment)
+    .map(
+      ({ order, comment }) =>
+        `- ${displayEmployeeName(order.employeeName)} – ${articleDisplayLabel(order)}, ${order.quantity} Stk.: ${comment}`,
+    )
+
   return [
     'Hallo liebe KollegInnen,',
     '',
     `anbei sende ich euch die Bestellliste für den Monat ${month}.`,
     ...(exchangeNotes.length ? ['', ...exchangeNotes] : []),
+    ...(commentNotes.length ? ['', 'Zu folgenden Bestellungen gibt es Anmerkungen:', ...commentNotes] : []),
     '',
     'Vielen Dank im Voraus für euer Bemühen!',
     '',
