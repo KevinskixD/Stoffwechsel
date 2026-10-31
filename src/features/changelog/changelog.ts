@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.10',
+    date: '2026-10-31',
+    changes: [
+      { type: 'neu', text: 'In der Bestellliste kann der Status mehrerer ausgewählter Bestellungen gemeinsam geändert werden.' },
+      { type: 'hinweis', text: 'Leihgaben behalten ihren Status „Ausgegeben“ und werden bei der gemeinsamen Statusänderung übersprungen.' },
+    ],
+  },
+  {
     version: '0.1.9',
     date: '2026-10-31',
     changes: [

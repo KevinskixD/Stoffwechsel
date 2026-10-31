@@ -94,6 +94,13 @@ export function OrderListPage() {
   const [exchangingOrder, setExchangingOrder] = useState<Order | null>(null)
   const [pendingReturn, setPendingReturn] = useState<Order | null>(null)
   const [commentEditor, setCommentEditor] = useState<{ orderId: string; value: string } | null>(null)
+  const [pendingBulkStatus, setPendingBulkStatus] = useState<{
+    statusId: string
+    statusName: string
+    isOrdered: boolean
+    ids: string[]
+    skippedLoanCount: number
+  } | null>(null)
 
   const { data: rawOrders, loading } = useOrders({
     employeeId: employeeId || undefined,
@@ -142,6 +149,40 @@ export function OrderListPage() {
       if (!confirmed) return
     }
     await updateOrderQuantity(order.id, quantity)
+  }
+
+  const bulkSelectableStatuses = activeOrderStatuses.filter((s) => !hasOrderStatusSemanticKey(s, 'issued'))
+
+  function handleBulkStatusSelect(statusId: string) {
+    const target = bulkSelectableStatuses.find((s) => s.id === statusId)
+    if (!target) return
+    const selectedOrders = rawOrders.filter((o) => selection.selectedIds.has(o.id))
+    // Loan issues stay pinned to the "issued" status (see OrderForm/ensureSeedData) and are never changed in bulk.
+    const eligible = selectedOrders.filter((o) => !o.isLoanIssue)
+    if (eligible.length === 0) {
+      showToast('Leihgaben können nicht manuell auf einen anderen Status gesetzt werden.', 'info')
+      return
+    }
+    setPendingBulkStatus({
+      statusId: target.id,
+      statusName: target.name,
+      isOrdered: hasOrderStatusSemanticKey(target, 'ordered'),
+      ids: eligible.map((o) => o.id),
+      skippedLoanCount: selectedOrders.length - eligible.length,
+    })
+  }
+
+  async function handleConfirmBulkStatus() {
+    if (!pendingBulkStatus) return
+    const { statusId, statusName, isOrdered, ids } = pendingBulkStatus
+    try {
+      await updateOrdersStatus(ids, statusId, statusName, isOrdered)
+      showToast(`${ids.length} Bestellung(en) auf "${statusName}" gesetzt.`, 'success')
+      selection.clear()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Status konnte nicht geändert werden.', 'error')
+    }
+    setPendingBulkStatus(null)
   }
 
   async function saveComment() {
@@ -595,6 +636,21 @@ export function OrderListPage() {
       </div>
       <div className="mb-4.5 flex items-center justify-end gap-3">
         {selection.selectedCount > 0 && (
+          <select
+            value=""
+            onChange={(e) => handleBulkStatusSelect(e.target.value)}
+            aria-label="Status der ausgewählten Bestellungen ändern"
+            className="rounded-lg border border-black/[0.12] bg-surface px-3 py-1.5 text-[13px] font-bold text-gray-900"
+          >
+            <option value="">{selection.selectedCount} ausgewählt: Status ändern…</option>
+            {bulkSelectableStatuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {selection.selectedCount > 0 && (
           <button
             type="button"
             onClick={() => setPendingDelete({ kind: 'bulk', ids: Array.from(selection.selectedIds) })}
@@ -659,6 +715,22 @@ export function OrderListPage() {
           setPendingDelete(null)
         }}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingBulkStatus !== null}
+        title="Status ändern"
+        message={
+          pendingBulkStatus
+            ? `${pendingBulkStatus.ids.length} Bestellung(en) auf "${pendingBulkStatus.statusName}" setzen?` +
+              (pendingBulkStatus.skippedLoanCount > 0
+                ? `\n\n${pendingBulkStatus.skippedLoanCount} ausgewählte Leihgabe(n) werden übersprungen.`
+                : '')
+            : ''
+        }
+        confirmLabel="Status ändern"
+        onConfirm={() => void handleConfirmBulkStatus()}
+        onCancel={() => setPendingBulkStatus(null)}
       />
 
       <BestellMailPreviewDialog
