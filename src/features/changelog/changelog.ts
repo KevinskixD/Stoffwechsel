@@ -19,6 +19,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.12',
+    date: '2026-11-07',
+    changes: [
+      { type: 'verbessert', text: 'Artikelliste: Größe und Abholort stehen jetzt direkt nach der Bezeichnung; Bestand, Selbstbehalt und Status werden nur angezeigt, wenn sie Informationen enthalten.' },
+      { type: 'verbessert', text: 'Artikelliste: Leihgaben sind direkt an der Artikelbezeichnung markiert statt in einer eigenen Spalte.' },
+      { type: 'verbessert', text: 'Bestellliste: Lange Kommentare machen die Artikel-Spalte nicht mehr so breit, Menge und Status bleiben besser sichtbar.' },
+    ],
+  },
+  {
     version: '0.1.11',
     date: '2026-11-07',
     changes: [

@@ -221,7 +221,7 @@ export function OrderListPage() {
         return <div>
           {articleDisplayLabel(o)}
           {commentEditor?.orderId === o.id ? (
-            <div className="mt-1.5 max-w-[34rem]">
+            <div className="mt-1.5 max-w-[24rem]">
               <textarea
                 autoFocus
                 rows={2}
@@ -246,7 +246,7 @@ export function OrderListPage() {
           ) : commentPreview ? (
             <p
               title={o.comment}
-              className="mt-0.5 max-w-[34rem] line-clamp-2 whitespace-pre-line text-xs leading-4 text-black/55"
+              className="mt-0.5 max-w-[24rem] line-clamp-2 whitespace-pre-line text-xs leading-4 text-black/55"
             >
               {commentPreview}
             </p>

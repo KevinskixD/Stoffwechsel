@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ActiveBadge } from '../../shared/components/ActiveBadge'
-import { ActiveToggleFilter } from '../../shared/components/ActiveToggleFilter'
 import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable'
 import { EditableCell } from '../../shared/components/EditableCell'
@@ -37,7 +36,7 @@ type PendingDelete = { kind: 'single'; article: Article } | { kind: 'bulk'; ids:
 const NO_PICKUP_LOCATION = '__none__'
 
 export function ArticleListPage() {
-  const [showInactive, setShowInactive] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active')
   const [search, setSearch] = useState('')
   const [pickupLocationFilter, setPickupLocationFilter] = useState('')
   const [deductibleFilter, setDeductibleFilter] = useState('')
@@ -47,7 +46,7 @@ export function ArticleListPage() {
   const [assigningPickupLocation, setAssigningPickupLocation] = useState(false)
   const [assigningDeductible, setAssigningDeductible] = useState(false)
   const { showToast } = useToast()
-  const { data: articles, loading } = useArticles(showInactive)
+  const { data: articles, loading } = useArticles(statusFilter !== 'active')
   const { data: pickupLocations } = usePickupLocations(false)
 
   const sizeOptions = Array.from(new Set(articles.map((a) => a.size).filter(Boolean))).sort()
@@ -63,21 +62,41 @@ export function ArticleListPage() {
     )
     .filter((a) => (deductibleFilter === 'yes' ? a.hasDeductible : deductibleFilter === 'no' ? !a.hasDeductible : true))
     .filter((a) => (sizeFilter ? a.size === sizeFilter : true))
+    .filter((a) => (statusFilter === 'inactive' ? !a.active : true))
   const selection = useRowSelection(filtered)
 
-  const columns: DataTableColumn<Article>[] = [
+  // Most articles track neither inventory nor a deductible, and the "Aktiv" badge says nothing while only
+  // active articles are listed — hide such columns instead of filling the table with dashes.
+  const hiddenColumns = new Set<string>()
+  if (!filtered.some((a) => a.trackInventory)) hiddenColumns.add('inventory')
+  if (!filtered.some((a) => a.hasDeductible)) hiddenColumns.add('deductible')
+  if (statusFilter === 'active') hiddenColumns.add('status')
+
+  const allColumns: DataTableColumn<Article>[] = [
     selection.column,
     {
       key: 'articleName',
       header: 'Artikelbezeichnung',
       render: (a) => (
-        <EditableCell
-          value={a.articleName}
-          onCommit={(v) => {
-            if (v) void updateArticleField(a.id, 'articleName', v)
-          }}
-        />
+        <span className="inline-flex items-center gap-2">
+          <EditableCell
+            value={a.articleName}
+            onCommit={(v) => {
+              if (v) void updateArticleField(a.id, 'articleName', v)
+            }}
+          />
+          {a.isLoanArticle ? (
+            <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+              Leihgabe
+            </span>
+          ) : null}
+        </span>
       ),
+    },
+    {
+      key: 'size',
+      header: 'Größe',
+      render: (a) => <EditableCell value={a.size} onCommit={(v) => void updateArticleField(a.id, 'size', v)} />,
     },
     {
       key: 'articleNumber',
@@ -85,61 +104,6 @@ export function ArticleListPage() {
       render: (a) => (
         <EditableCell value={a.articleNumber} onCommit={(v) => void updateArticleField(a.id, 'articleNumber', v)} />
       ),
-    },
-    {
-      key: 'deductible',
-      header: 'Selbstbehalt',
-      render: (a) =>
-        a.hasDeductible ? (
-          <span className="inline-flex items-center gap-1">
-            <EditableCell
-              type="number"
-              min={0}
-              step={0.05}
-              value={String(a.deductibleAmount)}
-              display={`${a.deductibleAmount.toFixed(2)} €`}
-              onCommit={(v) => {
-                const n = Number(v)
-                if (Number.isFinite(n) && n > 0) void updateArticleDeductibleAmount(a.id, n)
-              }}
-            />
-          </span>
-        ) : (
-          <span className="text-black/35">–</span>
-        ),
-    },
-    {
-      key: 'inventory',
-      header: 'Bestand',
-      render: (a) =>
-        a.trackInventory ? (
-          <EditableCell
-            type="number"
-            step={1}
-            value={String(a.inventoryQuantity)}
-            onCommit={(v) => {
-              const n = Number(v)
-              if (Number.isInteger(n)) void updateArticleInventoryQuantity(a.id, n)
-            }}
-          />
-        ) : (
-          <span className="text-black/35">–</span>
-        ),
-    },
-    {
-      key: 'loan',
-      header: 'Leihgewand',
-      render: (a) =>
-        a.isLoanArticle ? (
-          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Leihgabe</span>
-        ) : (
-          <span className="text-black/35">–</span>
-        ),
-    },
-    {
-      key: 'size',
-      header: 'Größe',
-      render: (a) => <EditableCell value={a.size} onCommit={(v) => void updateArticleField(a.id, 'size', v)} />,
     },
     {
       key: 'pickupLocation',
@@ -164,6 +128,46 @@ export function ArticleListPage() {
           ))}
         </select>
       ),
+    },
+    {
+      key: 'inventory',
+      header: 'Bestand',
+      render: (a) =>
+        a.trackInventory ? (
+          <EditableCell
+            type="number"
+            step={1}
+            value={String(a.inventoryQuantity)}
+            onCommit={(v) => {
+              const n = Number(v)
+              if (Number.isInteger(n)) void updateArticleInventoryQuantity(a.id, n)
+            }}
+          />
+        ) : (
+          <span className="text-black/35">–</span>
+        ),
+    },
+    {
+      key: 'deductible',
+      header: 'Selbstbehalt',
+      render: (a) =>
+        a.hasDeductible ? (
+          <span className="inline-flex items-center gap-1">
+            <EditableCell
+              type="number"
+              min={0}
+              step={0.05}
+              value={String(a.deductibleAmount)}
+              display={`${a.deductibleAmount.toFixed(2)} €`}
+              onCommit={(v) => {
+                const n = Number(v)
+                if (Number.isFinite(n) && n > 0) void updateArticleDeductibleAmount(a.id, n)
+              }}
+            />
+          </span>
+        ) : (
+          <span className="text-black/35">–</span>
+        ),
     },
     { key: 'status', header: 'Status', render: (a) => <ActiveBadge active={a.active} /> },
     {
@@ -198,6 +202,7 @@ export function ArticleListPage() {
       ),
     },
   ]
+  const columns = allColumns.filter((c) => !hiddenColumns.has(c.key))
 
   return (
     <div className="px-4 pt-[4.5rem] pb-10 lg:px-11 lg:pt-9 lg:pb-15">
@@ -275,13 +280,21 @@ export function ArticleListPage() {
             </option>
           ))}
         </FilterSelect>
+        <FilterSelect
+          label="Status"
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v as 'active' | 'inactive' | 'all')}
+        >
+          <option value="active">Aktiv</option>
+          <option value="inactive">Inaktiv</option>
+          <option value="all">Alle</option>
+        </FilterSelect>
         <FilterField label="Suche">
           <SearchInput value={search} onChange={setSearch} placeholder="Bezeichnung oder Nummer…" />
         </FilterField>
       </div>
 
       <div className="mb-4.5 flex flex-wrap items-center gap-3">
-        <ActiveToggleFilter showInactive={showInactive} onChange={setShowInactive} />
         {selection.selectedCount > 0 && (
           <>
             <button
