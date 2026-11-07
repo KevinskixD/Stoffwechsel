@@ -19,6 +19,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: '0.1.11',
+    date: '2026-11-07',
+    changes: [
+      { type: 'neu', text: 'In der Artikelliste können mehrere ausgewählte Artikel gemeinsam aktiviert oder deaktiviert werden.' },
+      { type: 'verbessert', text: 'Deaktivierte Artikel werden bei der Basisausrüstungs-Bestellung nicht mehr zur Auswahl angeboten.' },
+    ],
+  },
+  {
     version: '0.1.10',
     date: '2026-10-31',
     changes: [

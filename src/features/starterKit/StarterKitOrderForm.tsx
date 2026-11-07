@@ -70,7 +70,7 @@ export function StarterKitOrderForm() {
       let changed = false
       for (const category of categories) {
         if (category.id in next) continue
-        const firstValid = category.articleIds.find((id) => articles.some((a) => a.id === id))
+        const firstValid = category.articleIds.find((id) => articles.some((a) => a.id === id && a.active))
         if (firstValid) {
           next[category.id] = firstValid
           changed = true
@@ -234,7 +234,7 @@ export function StarterKitOrderForm() {
                 {categories.map((category) => {
                   const validArticles = category.articleIds
                     .map((id) => articles.find((a) => a.id === id))
-                    .filter((a): a is NonNullable<typeof a> => Boolean(a))
+                    .filter((a): a is NonNullable<typeof a> => a !== undefined && a.active)
 
                   if (validArticles.length === 0) {
                     return (
@@ -266,7 +266,7 @@ export function StarterKitOrderForm() {
                       >
                         {validArticles.map((article) => (
                           <option key={article.id} value={article.id}>
-                            {(article.size || articleDisplayLabel(article)) + (article.active ? '' : ' (inaktiv)')}
+                            {article.size || articleDisplayLabel(article)}
                           </option>
                         ))}
                       </select>

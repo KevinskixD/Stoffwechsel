@@ -126,6 +126,15 @@ export async function deleteAllArticles(): Promise<void> {
   await deleteArticles(snapshot.docs.map((docSnap) => docSnap.id))
 }
 
+export async function setArticlesActive(articleIds: string[], active: boolean): Promise<void> {
+  for (let i = 0; i < articleIds.length; i += DELETE_BATCH_SIZE) {
+    const chunk = articleIds.slice(i, i + DELETE_BATCH_SIZE)
+    const batch = writeBatch(db)
+    chunk.forEach((id) => batch.update(doc(db, 'articles', id), { active, updatedAt: serverTimestamp() }))
+    await batch.commit()
+  }
+}
+
 export async function assignPickupLocationToArticles(
   articleIds: string[],
   pickupLocationId: string,

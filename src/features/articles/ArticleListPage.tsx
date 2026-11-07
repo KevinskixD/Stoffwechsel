@@ -24,6 +24,7 @@ import {
   deleteArticle,
   deleteArticles,
   setArticleActive,
+  setArticlesActive,
   syncAllArticlesToMatrix,
   updateArticleDeductibleAmount,
   updateArticleField,
@@ -296,6 +297,28 @@ export function ArticleListPage() {
               className="rounded-lg border border-black/[0.12] px-3.5 py-1.5 text-[13px] font-bold text-gray-900"
             >
               {selection.selectedCount} ausgewählt: Selbstbehalt anpassen
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const ids = Array.from(selection.selectedIds)
+                void setArticlesActive(ids, true).then(() => showToast(`${ids.length} Artikel aktiviert.`, 'success'))
+              }}
+              className="rounded-lg border border-black/[0.12] px-3.5 py-1.5 text-[13px] font-bold text-gray-900"
+            >
+              {selection.selectedCount} ausgewählt: Aktivieren
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const ids = Array.from(selection.selectedIds)
+                void setArticlesActive(ids, false).then(() =>
+                  showToast(`${ids.length} Artikel deaktiviert.`, 'success'),
+                )
+              }}
+              className="rounded-lg border border-black/[0.12] px-3.5 py-1.5 text-[13px] font-bold text-gray-900"
+            >
+              {selection.selectedCount} ausgewählt: Deaktivieren
             </button>
             <button
               type="button"
